@@ -105,6 +105,8 @@ kubectl create secret generic \
 ```
 
 ## TODO
+* Bug: No config reload (add suffix/generator?)
 * Add `ownerRef` reconciliation when owned resources are modified
+* Cleanup on delete
 * Add LDAP support
 * Add leader election
