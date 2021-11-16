@@ -96,7 +96,7 @@ export default class FreeRadiusOperator extends Operator {
       await this.watchResource(crd.group, crd.versions[0].name, crd.plural, async (e) => {
         logger.debug({ e }, crd.versions[0].name + 'resource was modified');
         await this.reconcile(e.meta.namespace);
-      });
+      }, config.Namespace);
     });
   }
 
