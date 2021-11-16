@@ -11,6 +11,9 @@ spec:
         - name: freeradius-operator
           image: jvaldron/freeradius-operator
           imagePullPolicy: Always
+          command: ['/opt/sbin/radiusd']
+          args:
+            - -X
           env:
             - name: NAMESPACE
               valueFrom:
