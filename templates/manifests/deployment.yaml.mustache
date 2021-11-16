@@ -53,4 +53,8 @@ spec:
               mountPath: /etc/raddb/radiusd.conf
               subPath: radiusd.conf
             - name: raddb-mods
-              mountPath: /etc/raddb/mods-enabled
+              mountPath: /etc/raddb/mods-enabled/eap
+              subPath: eap
+            - name: raddb-mods
+              mountPath: /etc/raddb/mods-enabled/mschap
+              subPath: mschap
