@@ -32,13 +32,9 @@ spec:
       containers:
         - name: freeradius
           image: 'freeradius/freeradius-server:latest-alpine'
-          command: ['sh']
+          command: ['/opt/sbin/radiusd']
           args:
-            - -c
-            - --
-            - |
-              chmod o-w /etc/raddb/certs && \
-              /opt/sbin/radiusd -X
+            - -X
           ports:
             - containerPort: 1812
               protocol: UDP
@@ -46,7 +42,17 @@ spec:
               protocol: UDP
           volumeMounts:
             - name: raddb-certs
-              mountPath: /etc/raddb/certs
+              mountPath: /etc/raddb/certs/ca.pem
+              subPath: ca.pem
+            - name: raddb-certs
+              mountPath: /etc/raddb/certs/dh
+              subPath: dh
+            - name: raddb-certs
+              mountPath: /etc/raddb/certs/server.key
+              subPath: server.key
+            - name: raddb-certs
+              mountPath: /etc/raddb/certs/server.pem
+              subPath: server.pem
             - name: raddb-config
               mountPath: /etc/raddb/mods-config/files/authorize
               subPath: authorize
@@ -57,8 +63,8 @@ spec:
               mountPath: /etc/raddb/radiusd.conf
               subPath: radiusd.conf
             - name: raddb-mods
-              mountPath: /etc/raddb/mods-enabled/eap
-              subPath: eap
+              mountPath: /etc/raddb/mods-enabled/mschap
+              subPath: mschap
             - name: raddb-mods
               mountPath: /etc/raddb/mods-enabled/mschap
               subPath: mschap

@@ -526,7 +526,7 @@ export default class FreeRadiusOperator extends Operator {
     FreeRadiusOperator.addOwnerRef(certificates.metadata, cluster);
 
     certificates.data = {
-      ca: btoa(cluster.spec.certificate.certificates.ca),
+      'ca.pem': btoa(cluster.spec.certificate.certificates.ca),
       dh: btoa(cluster.spec.certificate.certificates.dh),
       'server.key': btoa(cluster.spec.certificate.certificates.privateKey),
       'server.pem': btoa(cluster.spec.certificate.certificates.publicKey)
