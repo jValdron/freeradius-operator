@@ -37,7 +37,7 @@ spec:
             - -c
             - --
             - |
-              chmod o-w -R /etc/raddb/certs && \
+              chmod o-w /etc/raddb/certs && \
               /opt/sbin/radiusd -X
           ports:
             - containerPort: 1812
