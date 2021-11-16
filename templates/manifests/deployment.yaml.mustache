@@ -32,9 +32,13 @@ spec:
       containers:
         - name: freeradius
           image: 'freeradius/freeradius-server:latest-alpine'
-          command: ['/opt/sbin/radiusd']
+          command: ['sh']
           args:
-            - -X
+            - -c
+            - --
+            - |
+              chmod o-w -R /etc/raddb/certs && \
+              /opt/sbin/radiusd -X
           ports:
             - containerPort: 1812
               protocol: UDP
