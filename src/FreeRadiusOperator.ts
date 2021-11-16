@@ -177,7 +177,7 @@ export default class FreeRadiusOperator extends Operator {
         deployment: <k8s.V1Deployment>k8s.loadYaml(Mustache.render(this.templates.manifests.deployment, values)),
         service: <k8s.V1Service>k8s.loadYaml(Mustache.render(this.templates.manifests.service, values)),
         mods: Object.fromEntries(Object.entries(this.templates.mods).map(
-          ([key, mod]) => [key, Mustache.render(mod, values)]
+          ([key, mod]) => [key.replace('.mustache', ''), Mustache.render(mod, values)]
         )),
         authorize: FreeRadiusOperator.renderAuthorize(this.templates.authorize, namespace, cluster, users, devices),
         clients: FreeRadiusOperator.renderClients(this.templates.clients, namespace, cluster, clients),
