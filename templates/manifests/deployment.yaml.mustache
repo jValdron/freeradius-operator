@@ -1,0 +1,53 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: freeradius-{{clusterName}}
+  labels:
+    app: freeradius
+    clusterName: {{clusterName}}
+spec:
+  replicas: {{replicas}}
+  selector:
+    matchLabels:
+      app: freeradius
+      clusterName: {{clusterName}}
+  template:
+    metadata:
+      name: freeradius
+      labels:
+        app: freeradius
+        clusterName: {{clusterName}}
+    spec:
+      volumes:
+        - name: raddb-certs
+          secret:
+            secretName: freeradius-{{clusterName}}-certs-generated
+        - name: raddb-config
+          configMap:
+            name: freeradius-{{clusterName}}-config-generated
+        - name: raddb-mods
+          configMap:
+            name: freeradius-{{clusterName}}-mods-generated
+      containers:
+        - name: freeradius
+          image: 'freeradius/freeradius-server:latest-alpine'
+          ports:
+            - containerPort: 1812
+              protocol: UDP
+            - containerPort: 1813
+              protocol: UDP
+          volumeMounts:
+            - name: raddb-certs
+              mountPath: /etc/raddb/certs
+            - name: raddb-config
+              mountPath: /etc/raddb/mods-config/files/authorize
+              subPath: authorize
+            - name: raddb-config
+              mountPath: /etc/raddb/clients.conf
+              subPath: clients.conf
+            - name: raddb-config
+              mountPath: /etc/raddb/radiusd.conf
+              subPath: radiusd.conf
+            - name: raddb-mods
+              mountPath: /etc/raddb/mods-enabled

@@ -1,0 +1,27 @@
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: Cluster
+metadata:
+  name: primary
+spec:
+  replicas: 1
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.1.21.33
+  certificate:
+    # fromSecretRef:
+    #   # Generated with:
+    #   # kubectl create secret generic \
+    #   #   --from-file=ca=certs/ca.pem \
+    #   #   --from-file=dh=certs/dh \
+    #   #   --from-file=privateKey=certs/server.key \
+    #   #   --from-file=publicKey=certs/server.pem \
+    #   #   --from-literal=privateKeyPassword=changeme \
+    #   #   freeradius-primary-certs
+    #   name: freeradius-primary-certs
+    privateKeyPassword: changeme
+    certificates:
+      ca: <ca file>
+      dh: <dh file>
+      privateKey: <server private key>
+      publicKey: <server public key>

@@ -1,0 +1,21 @@
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: Device
+metadata:
+  name: phone0
+spec:
+  macAddresses:
+    - aa:bb:cc:dd:ee:ff
+  vlan: 1111
+
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: Device
+metadata:
+  name: private-device0
+  labels:
+    clusterName: private
+spec:
+  macAddresses:
+    - aa:bb:cc:dd:ee:ff
+  vlan: 1234

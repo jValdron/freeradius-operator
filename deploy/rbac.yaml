@@ -1,0 +1,70 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: freeradius-operator
+rules:
+  - apiGroups: ['']
+    resources:
+      - configmaps
+      - deployments
+      - secrets
+      - services
+    verbs:
+      - get
+      - watch
+      - list
+      - create
+      - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: freeradius-operator
+rules:
+  - apiGroups: ['apiextensions.k8s.io']
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - create
+
+  - apiGroups: ['freeradius.valdron.ca']
+    resources:
+      - clients
+      - clusters
+      - devices
+      - users
+    verbs:
+      - get
+      - watch
+      - list
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: freeradius-operator
+  namespace: freeradius-operator
+subjects:
+  - kind: ServiceAccount
+    name: freeradius-operator
+    namespace: freeradius-operator
+roleRef:
+  kind: Role
+  name: freeradius-operator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: freeradius-operator
+subjects:
+  - kind: ServiceAccount
+    name: freeradius-operator
+    namespace: freeradius-operator
+roleRef:
+  kind: ClusterRole
+  name: freeradius-operator
+  apiGroup: rbac.authorization.k8s.io

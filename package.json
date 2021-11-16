@@ -1,0 +1,26 @@
+{
+  "name": "freeradius-operator",
+  "author": {
+    "name": "Jason Valdron",
+    "email": "jason@valdron.ca",
+    "url": "http://valdron.ca"
+  },
+  "scripts": {
+    "start": "tsc && node dist/app.js | pino-pretty",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@dot-i/k8s-operator": "^1.1.7",
+    "@kubernetes/client-node": "^0.15.1",
+    "@types/mustache": "^4.1.2",
+    "@types/pino": "^6.3.11",
+    "dotenv": "^10.0.0",
+    "mustache": "^4.2.0",
+    "pino": "^6.13.3"
+  },
+  "devDependencies": {
+    "tslint": "^6.1.3",
+    "typescript": "^4.4.3"
+  },
+  "license": "MIT"
+}

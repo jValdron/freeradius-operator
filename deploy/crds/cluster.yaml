@@ -1,0 +1,71 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusters.freeradius.valdron.ca
+spec:
+  group: freeradius.valdron.ca
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                isDefaultCluster:
+                  type: boolean
+                replicas:
+                  type: number
+                service:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    loadBalancerIP:
+                      type: string
+                  required:
+                    - type
+                defaultVlan:
+                  type: number
+                certificate:
+                  type: object
+                  properties:
+                    fromSecretRef:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                        - name
+                    privateKeyPassword:
+                      type: string
+                    certificates:
+                      type: object
+                      properties:
+                        ca:
+                          type: string
+                        dh:
+                          type: string
+                        privateKey:
+                          type: string
+                        publicKey:
+                          type: string
+                      required:
+                        - ca
+                        - privateKey
+                        - publicKey
+              required:
+                - replicas
+                - service
+                - certificate
+              type: object
+          type: object
+  names:
+    singular: cluster
+    plural: clusters
+    kind: Cluster

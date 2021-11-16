@@ -1,0 +1,15 @@
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: User
+metadata:
+  name: john
+spec:
+  # fromSecretRef:
+  #   # Generated with:
+  #   # kubectl create secret generic \
+  #   #   --from-literal=username=john2 \
+  #   #   --from-literal=password=supersecret \
+  #   #   freeradius-primary-users-john2
+  #   name: freeradius-primary-users-john2
+  username: john
+  password: supersecret

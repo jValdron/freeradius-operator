@@ -1,0 +1,35 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: devices.freeradius.valdron.ca
+spec:
+  group: freeradius.valdron.ca
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                macAddresses:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                vlan:
+                  type: number
+              required:
+                - macAddresses
+                - vlan
+              type: object
+          type: object
+  names:
+    singular: device
+    plural: devices
+    kind: Device
+    shortNames:
+      - dev

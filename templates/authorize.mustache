@@ -1,0 +1,21 @@
+{{#users}}
+# {{name}}
+{{username}}	Cleartext-Password := "{{password}}"
+{{/users}}
+
+{{#devices}}
+# {{name}}
+{{#macAddresses}}
+{{.}}	Cleartext-Password := "{{.}}"    
+	Tunnel-Type = 13,
+	Tunnel-Medium-Type = 6,
+	Tunnel-Private-Group-Id = {{vlan}}
+{{/macAddresses}}
+{{/devices}}
+
+{{#defaultVlan}}
+DEFAULT	Cleartext-Password := "%{User-Name}"
+	Tunnel-Type = 13,
+	Tunnel-Medium-Type = 6,
+	Tunnel-Private-Group-Id = {{defaultVlan}}
+{{/defaultVlan}}

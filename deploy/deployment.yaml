@@ -1,0 +1,13 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freeradius-operator
+spec:
+  template:
+    spec:
+      serviceAccountName: freeradius-operator
+      containers:
+        - name: freeradius-operator
+          image: jvaldron/freeradius-operator
+          imagePullPolicy: Always

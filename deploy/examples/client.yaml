@@ -1,0 +1,14 @@
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: Client
+metadata:
+  name: node0
+spec:
+  ipAddress: 10.1.20.1/32
+  # fromSecretRef:
+  #   # Generated with:
+  #   # kubectl create secret generic \
+  #   #   --from-literal=secret=changeme \
+  #   #   freeradius-primary-clients
+  #   name: freeradius-primary-clients
+  secret: changeme

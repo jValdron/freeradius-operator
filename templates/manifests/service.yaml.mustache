@@ -1,0 +1,27 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: freeradius-{{clusterName}}
+  annotations:
+    metallb.universe.tf/allow-shared-ip: 'true'
+  labels:
+    app: freeradius
+    clusterName: {{clusterName}}
+spec:
+  ports:
+    - name: radius
+      protocol: UDP
+      port: 1812
+      targetPort: 1812
+    - name: radius-acct
+      protocol: UDP
+      port: 1813
+      targetPort: 1813
+  selector:
+    app: freeradius
+    clusterName: {{clusterName}}
+  type: {{service.type}}
+{{#service.loadBalancerIP}}
+  loadBalancerIP: {{service.loadBalancerIP}}
+{{/service.loadBalancerIP}}

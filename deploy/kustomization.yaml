@@ -1,0 +1,14 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: freeradius-operator
+
+commonLabels:
+  app: freeradius-operator
+
+resources:
+  - crds/
+  - deployment.yaml
+  - rbac.yaml
+  - service-account.yaml
