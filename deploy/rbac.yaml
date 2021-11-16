@@ -7,9 +7,18 @@ rules:
   - apiGroups: ['']
     resources:
       - configmaps
-      - deployments
       - secrets
       - services
+    verbs:
+      - get
+      - watch
+      - list
+      - create
+      - patch
+
+  - apiGroups: ['apps']
+    resources:
+      - deployments
     verbs:
       - get
       - watch
