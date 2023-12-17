@@ -205,20 +205,6 @@ export class KubeHelpers {
     return new Promise((resolve, reject) => {
       Promise.all([
         new Promise((resolve, reject) => {
-          client.listNamespacedCustomObject(
-            crd.group,
-            crd.versions[0].name,
-            namespace,
-            crd.plural,
-            undefined,
-            undefined,
-            undefined,
-            `clusterName=${cluster.metadata.name}`
-          ).then((response) => {
-            return resolve((<k8s.KubernetesListObject<T>>response.body).items);
-          }).catch(reject);
-        }),
-        new Promise((resolve, reject) => {
           if (cluster.spec.isDefaultCluster)
           {
             client.listNamespacedCustomObject(
@@ -229,7 +215,6 @@ export class KubeHelpers {
               undefined,
               undefined,
               undefined,
-              `!clusterName`
             ).then((response) => {
               return resolve((<k8s.KubernetesListObject<T>>response.body).items);
             }).catch(reject);
