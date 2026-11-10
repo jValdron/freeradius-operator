@@ -4,7 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,31 +54,25 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 	configHash := hashConfig(in.Bundle, in.CertLayout, in.CertMaterial, cluster.Spec)
 
 	configCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapConfigName(name),
-			Namespace: ns,
-			Labels:    lbls,
-		},
-		Data: in.Bundle.Config,
+		Name:      configMapConfigName(name),
+		Namespace: ns,
+		Labels:    lbls,
+		Data:      in.Bundle.Config,
 	}
 	modsCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapModsName(name),
-			Namespace: ns,
-			Labels:    lbls,
-		},
-		Data: in.Bundle.Mods,
+		Name:      configMapModsName(name),
+		Namespace: ns,
+		Labels:    lbls,
+		Data:      in.Bundle.Mods,
 	}
 
 	var certSecret *corev1.Secret
 	if mat := effectiveMaterial(in.CertLayout, in.CertMaterial); mat != nil {
 		certSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      certsSecretName(name),
-				Namespace: ns,
-				Labels:    lbls,
-			},
-			Type: corev1.SecretTypeOpaque,
+			Name:      certsSecretName(name),
+			Namespace: ns,
+			Labels:    lbls,
+			Type:      corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				"ca.pem":     mat.CAPEM,
 				"dh":         mat.DH,
@@ -105,11 +100,9 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 		labels.ClusterKey: name,
 	}
 	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      deploymentName(name),
-			Namespace: ns,
-			Labels:    lbls,
-		},
+		Name:      deploymentName(name),
+		Namespace: ns,
+		Labels:    lbls,
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: podLabels},
@@ -128,8 +121,8 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Volumes:            buildVolumes(name, in.CertLayout, hasCertSecret, mountDH),
-					Containers:         []corev1.Container{buildContainer(image, cluster.Spec.Debug, name, in.CertLayout, hasCertSecret, mountDH)},
+					Volumes:            buildVolumes(name, in.CertLayout, hasCertSecret),
+					Containers:         []corev1.Container{buildContainer(image, cluster.Spec.Debug, in.CertLayout, hasCertSecret, mountDH)},
 					ServiceAccountName: "default",
 				},
 			},
@@ -137,11 +130,9 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 	}
 
 	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName(name),
-			Namespace: ns,
-			Labels:    lbls,
-		},
+		Name:      serviceName(name),
+		Namespace: ns,
+		Labels:    lbls,
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceType(cluster.Spec.Service.Type),
 			Selector: podLabels,
@@ -190,12 +181,7 @@ func effectiveMaterial(layout certs.Layout, resolved *certs.Material) *certs.Mat
 
 func hashConfig(bundle radiusconfig.Bundle, layout certs.Layout, mat *certs.Material, spec freeradiusv1.ClusterSpec) string {
 	h := sha256.New()
-	keys := make([]string, 0, len(bundle.Config))
-	for k := range bundle.Config {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
+	for _, k := range slices.Sorted(maps.Keys(bundle.Config)) {
 		_, _ = h.Write([]byte(k))
 		_, _ = h.Write([]byte(bundle.Config[k]))
 	}

@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	freeradiusv1 "github.com/jValdron/freeradius-operator/api/v1"
 	"github.com/jValdron/freeradius-operator/internal/certs"
 	"github.com/jValdron/freeradius-operator/internal/desired"
@@ -14,7 +12,7 @@ import (
 
 func TestBuildClusterConfigHashOnDeployment(t *testing.T) {
 	cluster := &freeradiusv1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "primary", Namespace: "default"},
+		Name: "primary", Namespace: "default",
 		Spec: freeradiusv1.ClusterSpec{
 			Replicas: 1,
 			Service:  freeradiusv1.ServiceSpec{Type: "ClusterIP"},
@@ -46,7 +44,7 @@ func TestBuildClusterConfigHashOnDeployment(t *testing.T) {
 
 func TestBuildClusterCertManagerUniqueCAPMount(t *testing.T) {
 	cluster := &freeradiusv1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "primary", Namespace: "default"},
+		Name: "primary", Namespace: "default",
 		Spec: freeradiusv1.ClusterSpec{
 			Replicas: 1,
 			Service:  freeradiusv1.ServiceSpec{Type: "ClusterIP"},
@@ -76,7 +74,7 @@ func TestBuildClusterCertManagerUniqueCAPMount(t *testing.T) {
 
 func TestBuildClusterNoDebugByDefault(t *testing.T) {
 	cluster := &freeradiusv1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "primary", Namespace: "default"},
+		Name: "primary", Namespace: "default",
 		Spec: freeradiusv1.ClusterSpec{
 			Replicas: 1,
 			Service:  freeradiusv1.ServiceSpec{Type: "ClusterIP"},

@@ -42,7 +42,7 @@ type ClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	return r.gate.run(req.NamespacedName.String(), func() (ctrl.Result, error) {
+	return r.gate.run(req.String(), func() (ctrl.Result, error) {
 		return r.reconcile(ctx, req)
 	})
 }
@@ -147,51 +147,51 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterReconciler) applyConfigMap(ctx context.Context, desired *corev1.ConfigMap, owner client.Object) error {
+func (r *ClusterReconciler) applyConfigMap(ctx context.Context, want *corev1.ConfigMap, owner client.Object) error {
 	live := &corev1.ConfigMap{}
-	live.Name = desired.Name
-	live.Namespace = desired.Namespace
+	live.Name = want.Name
+	live.Namespace = want.Namespace
 	_, err := ensure.Apply(ctx, r.Client, live, owner, r.Config.DryRun, func() error {
-		live.Data = desired.Data
-		live.Labels = desired.Labels
+		live.Data = want.Data
+		live.Labels = want.Labels
 		return nil
 	})
 	return err
 }
 
-func (r *ClusterReconciler) applySecret(ctx context.Context, desired *corev1.Secret, owner client.Object) error {
+func (r *ClusterReconciler) applySecret(ctx context.Context, want *corev1.Secret, owner client.Object) error {
 	live := &corev1.Secret{}
-	live.Name = desired.Name
-	live.Namespace = desired.Namespace
+	live.Name = want.Name
+	live.Namespace = want.Namespace
 	_, err := ensure.Apply(ctx, r.Client, live, owner, r.Config.DryRun, func() error {
-		live.Data = desired.Data
-		live.Labels = desired.Labels
-		live.Type = desired.Type
+		live.Data = want.Data
+		live.Labels = want.Labels
+		live.Type = want.Type
 		return nil
 	})
 	return err
 }
 
-func (r *ClusterReconciler) applyDeployment(ctx context.Context, desired *appsv1.Deployment, owner client.Object) error {
+func (r *ClusterReconciler) applyDeployment(ctx context.Context, want *appsv1.Deployment, owner client.Object) error {
 	live := &appsv1.Deployment{}
-	live.Name = desired.Name
-	live.Namespace = desired.Namespace
+	live.Name = want.Name
+	live.Namespace = want.Namespace
 	_, err := ensure.Apply(ctx, r.Client, live, owner, r.Config.DryRun, func() error {
-		live.Spec = desired.Spec
-		live.Labels = desired.Labels
+		live.Spec = want.Spec
+		live.Labels = want.Labels
 		return nil
 	})
 	return err
 }
 
-func (r *ClusterReconciler) applyService(ctx context.Context, desired *corev1.Service, owner client.Object) error {
+func (r *ClusterReconciler) applyService(ctx context.Context, want *corev1.Service, owner client.Object) error {
 	live := &corev1.Service{}
-	live.Name = desired.Name
-	live.Namespace = desired.Namespace
+	live.Name = want.Name
+	live.Namespace = want.Namespace
 	_, err := ensure.Apply(ctx, r.Client, live, owner, r.Config.DryRun, func() error {
-		live.Spec = desired.Spec
-		live.Labels = desired.Labels
-		live.Annotations = desired.Annotations
+		live.Spec = want.Spec
+		live.Labels = want.Labels
+		live.Annotations = want.Annotations
 		return nil
 	})
 	return err
