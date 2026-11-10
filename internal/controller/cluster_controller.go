@@ -80,6 +80,9 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 		_ = r.patchStatus(ctx, &cluster)
 		return ctrl.Result{}, err
 	}
+	if layout.Mode == certs.ModeCertManager && mat != nil && len(mat.CAPEM) > 0 {
+		layout.TLSHasCA = true
+	}
 	setCondition(&cluster, freeradiusv1.ConditionCertificateConfigured, metav1.ConditionTrue, "Resolved", "certificate material resolved")
 
 	password := cluster.Spec.Certificate.PrivateKeyPassword

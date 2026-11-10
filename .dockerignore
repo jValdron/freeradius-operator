@@ -9,6 +9,9 @@
 !**/*.go
 **/*_test.go
 
+# go:embed assets for radiusconfig
+!internal/radiusconfig/embed/**
+
 # Re-include Go module files
 !go.mod
 !go.sum

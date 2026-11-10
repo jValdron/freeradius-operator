@@ -25,6 +25,8 @@ type Layout struct {
 	// Cert-manager direct mounts (secret names in cluster namespace unless overridden).
 	TLSSecret freeradiusv1.SecretRef
 	DHSecret  freeradiusv1.SecretRef
+	// TLSHasCA is set when the TLS secret has a ca.crt key (cert-manager).
+	TLSHasCA bool
 }
 
 // Material is PEM bytes for the generated certs Secret.

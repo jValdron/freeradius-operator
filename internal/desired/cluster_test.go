@@ -44,6 +44,36 @@ func TestBuildClusterConfigHashOnDeployment(t *testing.T) {
 	}
 }
 
+func TestBuildClusterCertManagerUniqueCAPMount(t *testing.T) {
+	cluster := &freeradiusv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "primary", Namespace: "default"},
+		Spec: freeradiusv1.ClusterSpec{
+			Replicas: 1,
+			Service:  freeradiusv1.ServiceSpec{Type: "ClusterIP"},
+			Certificate: freeradiusv1.CertificateSpec{
+				TLSSecretRef: &freeradiusv1.SecretRef{Name: "freeradius-primary-tls"},
+			},
+		},
+	}
+	mat := &certs.Material{CAPEM: []byte("ca-chain")}
+	out, err := desired.BuildCluster(desired.ClusterInput{
+		Cluster:      cluster,
+		Bundle:       radiusconfig.BuildBundle(radiusconfig.Input{ClusterName: "primary"}),
+		CertLayout:   certs.Layout{Mode: certs.ModeCertManager, TLSSecret: freeradiusv1.SecretRef{Name: "freeradius-primary-tls"}, TLSHasCA: true},
+		CertMaterial: mat,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int{}
+	for _, m := range out.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+		seen[m.MountPath]++
+	}
+	if seen["/etc/raddb/certs/ca.pem"] != 1 {
+		t.Fatalf("expected one ca.pem mount, got %d mounts: %#v", seen["/etc/raddb/certs/ca.pem"], out.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	}
+}
+
 func TestBuildClusterNoDebugByDefault(t *testing.T) {
 	cluster := &freeradiusv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "primary", Namespace: "default"},
@@ -65,10 +95,9 @@ func TestBuildClusterNoDebugByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, a := range out.Deployment.Spec.Template.Spec.Containers[0].Args {
-		if a == "-X" {
-			t.Fatal("expected no -X without debug")
-		}
+	args := out.Deployment.Spec.Template.Spec.Containers[0].Args
+	if len(args) != 1 || args[0] != "-f" {
+		t.Fatalf("expected radiusd foreground args [-f], got %v", args)
 	}
 	if !strings.Contains(out.Deployment.Spec.Template.Spec.Containers[0].Image, "freeradius") {
 		t.Fatalf("unexpected image %s", out.Deployment.Spec.Template.Spec.Containers[0].Image)

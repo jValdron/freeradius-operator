@@ -1,8 +1,27 @@
 package radiusconfig
 
-import "fmt"
+import (
+	_ "embed"
+	"fmt"
+	"strings"
+)
 
-// buildRadiusd overrides only the instance name; other directives use the container image defaults.
+// Stock radiusd.conf from freeradius/freeradius-server:3.2.10-alpine (/etc/raddb/radiusd.conf).
+// We embed the full file because the ConfigMap subPath replaces the image default entirely.
+//
+//go:embed embed/radiusd.conf.default
+var radiusdConfDefault []byte
+
+const defaultRadiusdNameLine = "name = radiusd"
+
 func buildRadiusd(clusterName string) string {
-	return fmt.Sprintf("name = %s\n", clusterName)
+	if clusterName == "" {
+		clusterName = "radiusd"
+	}
+	conf := string(radiusdConfDefault)
+	nameLine := fmt.Sprintf("name = %s", clusterName)
+	if strings.Contains(conf, defaultRadiusdNameLine) {
+		return strings.Replace(conf, defaultRadiusdNameLine, nameLine, 1)
+	}
+	return nameLine + "\n" + conf
 }

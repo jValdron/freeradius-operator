@@ -71,7 +71,7 @@ func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts, mo
 }
 
 func buildContainer(image string, debug bool, clusterName string, layout certs.Layout, hasGeneratedCerts, mountDH bool) corev1.Container {
-	args := []string{}
+	args := []string{"-f"}
 	if debug {
 		args = append(args, "-X")
 	}
@@ -119,9 +119,6 @@ func certVolumeMounts(layout certs.Layout, clusterName string, hasGeneratedCerts
 				mounts = append(mounts, corev1.VolumeMount{Name: "raddb-certs", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
 			}
 		}
-		if hasGeneratedCerts {
-			mounts = append(mounts, caGeneratedMounts()...)
-		}
 		return mounts
 	default:
 		mounts := []corev1.VolumeMount{
@@ -137,11 +134,8 @@ func certVolumeMounts(layout certs.Layout, clusterName string, hasGeneratedCerts
 }
 
 func layoutHasCA(layout certs.Layout) (struct{}, bool) {
-	return struct{}{}, false // ca.crt optional; reconciler may set later
-}
-
-func caGeneratedMounts() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{Name: "raddb-certs", MountPath: "/etc/raddb/certs/ca.pem", SubPath: "ca.pem"},
+	if layout.TLSHasCA {
+		return struct{}{}, true
 	}
+	return struct{}{}, false
 }

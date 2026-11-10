@@ -68,9 +68,16 @@ func TestBuildBundleClientsSecretQuoted(t *testing.T) {
 	}
 }
 
-func TestBuildBundleRadiusdNameOnly(t *testing.T) {
+func TestBuildBundleRadiusdName(t *testing.T) {
 	b := radiusconfig.BuildBundle(radiusconfig.Input{ClusterName: "primary"})
-	if got := b.Config["radiusd.conf"]; got != "name = primary\n" {
-		t.Fatalf("unexpected radiusd.conf: %q", got)
+	got := b.Config["radiusd.conf"]
+	if !strings.Contains(got, "name = primary") {
+		t.Fatalf("expected cluster name in radiusd.conf, got prefix: %.80q", got)
+	}
+	if !strings.Contains(got, "prefix = /opt") {
+		t.Fatal("expected full stock radiusd.conf with prefix = /opt")
+	}
+	if strings.Contains(got, "name = radiusd\n") && !strings.Contains(got, "name = primary") {
+		t.Fatal("expected default name replaced with cluster name")
 	}
 }

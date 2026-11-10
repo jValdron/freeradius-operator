@@ -178,13 +178,11 @@ func effectiveMaterial(layout certs.Layout, resolved *certs.Material) *certs.Mat
 	case certs.ModeLegacySecret:
 		return resolved
 	case certs.ModeCertManager:
-		if resolved == nil {
+		// TLS cert/key/CA mount from the cert-manager Secret; generated Secret is only for optional DH.
+		if resolved == nil || len(resolved.DH) == 0 {
 			return nil
 		}
-		if len(resolved.DH) == 0 && len(resolved.CAPEM) == 0 {
-			return nil
-		}
-		return &certs.Material{DH: resolved.DH, CAPEM: resolved.CAPEM}
+		return &certs.Material{DH: resolved.DH}
 	default:
 		return nil
 	}
