@@ -1,0 +1,16 @@
+# E2e NAS + user for radclient (Kind pod CIDR). Applied after the Cluster CR.
+apiVersion: freeradius.valdron.ca/v1
+kind: Client
+metadata:
+  name: e2e-nas
+spec:
+  ipAddress: 10.244.0.0/16
+  secret: e2e-test-secret
+---
+apiVersion: freeradius.valdron.ca/v1
+kind: User
+metadata:
+  name: e2e-user
+spec:
+  username: test
+  password: testpass

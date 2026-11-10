@@ -1,5 +1,8 @@
 resources:
 - manager.yaml
+
+# Published default. For other images use: make deploy IMG=<registry>/<name>:<tag>
+# (renders via gitignored bin/kustomize-deploy/; does not modify this file).
 images:
 - name: controller
   newName: ghcr.io/jvaldron/freeradius-operator

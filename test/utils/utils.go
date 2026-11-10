@@ -31,9 +31,18 @@ const (
 	certmanagerVersion = "v1.21.1"
 	certmanagerURLTmpl = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
 
-	defaultKindBinary  = "kind"
-	defaultKindCluster = "kind"
+	defaultKindBinary = "kind"
+	// Must match Makefile KIND_CLUSTER default (make test-e2e).
+	defaultKindCluster = "freeradius-operator-test-e2e"
 )
+
+// KindClusterName returns the Kind cluster used for e2e (KIND_CLUSTER env or default).
+func KindClusterName() string {
+	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok && v != "" {
+		return v
+	}
+	return defaultKindCluster
+}
 
 func warnError(err error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
@@ -133,12 +142,21 @@ func IsCertManagerCRDsInstalled() bool {
 	return false
 }
 
+// ExportKindKubeconfig points kubectl at the e2e Kind cluster.
+func ExportKindKubeconfig() error {
+	cluster := KindClusterName()
+	kindBinary := defaultKindBinary
+	if v, ok := os.LookupEnv("KIND"); ok {
+		kindBinary = v
+	}
+	cmd := exec.Command(kindBinary, "export", "kubeconfig", "--name", cluster)
+	_, err := Run(cmd)
+	return err
+}
+
 // LoadImageToKindClusterWithName loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
-	cluster := defaultKindCluster
-	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
-		cluster = v
-	}
+	cluster := KindClusterName()
 	kindOptions := []string{"load", "docker-image", name, "--name", cluster}
 	kindBinary := defaultKindBinary
 	if v, ok := os.LookupEnv("KIND"); ok {

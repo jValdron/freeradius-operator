@@ -45,6 +45,9 @@ const metricsServiceName = "freeradius-operator-controller-manager-metrics-servi
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "freeradius-operator-metrics-binding"
 
+const radiusAuthCheckPod = "radius-auth-check"
+const radiusE2ESecret = "e2e-test-secret"
+
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
 
@@ -79,6 +82,14 @@ var _ = Describe("Manager", Ordered, func() {
 	AfterAll(func() {
 		By("cleaning up the curl pod for metrics")
 		cmd := exec.Command("kubectl", "delete", "pod", "curl-metrics", "-n", namespace)
+		_, _ = utils.Run(cmd)
+
+		By("cleaning up the radius auth check pod")
+		cmd = exec.Command("kubectl", "delete", "pod", radiusAuthCheckPod, "-n", "default", "--ignore-not-found")
+		_, _ = utils.Run(cmd)
+
+		By("removing e2e metrics ClusterRoleBinding")
+		cmd = exec.Command("kubectl", "delete", "clusterrolebinding", metricsRoleBindingName, "--ignore-not-found")
 		_, _ = utils.Run(cmd)
 
 		By("undeploying the controller-manager")
@@ -174,17 +185,12 @@ var _ = Describe("Manager", Ordered, func() {
 		})
 
 		It("should ensure the metrics endpoint is serving metrics", func() {
-			By("creating a ClusterRoleBinding for the service account to allow access to metrics")
-			cmd := exec.Command("kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
-				"--clusterrole=freeradius-operator-metrics-reader",
-				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
-			)
-			_, err := utils.Run(cmd)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create ClusterRoleBinding")
+			By("ensuring a ClusterRoleBinding lets the manager service account scrape metrics")
+			Expect(ensureMetricsReaderBinding()).To(Succeed())
 
 			By("validating that the metrics service is available")
-			cmd = exec.Command("kubectl", "get", "service", metricsServiceName, "-n", namespace)
-			_, err = utils.Run(cmd)
+			cmd := exec.Command("kubectl", "get", "service", metricsServiceName, "-n", namespace)
+			_, err := utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Metrics service should exist")
 
 			By("getting the service account token")
@@ -270,17 +276,141 @@ var _ = Describe("Manager", Ordered, func() {
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks
 
-		// TODO: Customize the e2e test suite with scenarios specific to your project.
-		// Consider applying sample/CR(s) and check their status and/or verifying
-		// the reconciliation by using the metrics, i.e.:
-		// metricsOutput, err := getMetricsOutput()
-		// Expect(err).NotTo(HaveOccurred(), "Failed to retrieve logs from curl pod")
-		// Expect(metricsOutput).To(ContainSubstring(
-		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		//    strings.ToLower(<Kind>),
-		// ))
+		It("should reconcile a Cluster into a FreeRADIUS Deployment", func() {
+			const workloadNS = "default"
+			const clusterName = "primary"
+
+			By("installing cert-manager Issuer and Certificate for TLS")
+			cmd := exec.Command("kubectl", "apply", "-k", "config/samples/cert-manager")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to apply cert-manager samples")
+
+			waitCertReady := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
+					"certificate", "freeradius-primary-tls", "-n", workloadNS,
+					"--timeout=10s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitCertReady, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("applying sample Cluster")
+			cmd = exec.Command("kubectl", "apply", "-f", "config/samples/freeradius_v1_cluster.yaml")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to apply Cluster sample")
+
+			By("applying e2e RADIUS client and user")
+			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/fixtures/radius_auth_client.yaml")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to apply e2e RADIUS client and user")
+
+			deploymentName := fmt.Sprintf("freeradius-%s", clusterName)
+			serviceHost := fmt.Sprintf("freeradius-%s.%s.svc.cluster.local", clusterName, workloadNS)
+
+			By("waiting for generated FreeRADIUS Deployment")
+			waitDeployment := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "deployment", deploymentName, "-n", workloadNS)
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitDeployment, 2*time.Minute, 3*time.Second).Should(Succeed())
+
+			cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
+				"deployment", deploymentName, "-n", workloadNS, "--timeout=5m")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "FreeRADIUS Deployment did not become Available")
+
+			By("waiting for Cluster Ready status")
+			waitClusterReady := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
+					"cluster", clusterName, "-n", workloadNS, "--timeout=15s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitClusterReady, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("sending a PAP auth request with radclient")
+			runRadiusAuthCheck(workloadNS, serviceHost)
+		})
 	})
 })
+
+// runRadiusAuthCheck runs radclient in a one-shot pod and expects Access-Accept.
+func runRadiusAuthCheck(workloadNS, serviceHost string) {
+	script := fmt.Sprintf(`for i in $(seq 1 30); do
+	if printf 'User-Name = test, User-Password = testpass\n' | /opt/bin/radclient -x %s:1812 auth %s 2>&1 | tee /dev/stderr | grep -q 'Access-Accept'; then
+		exit 0
+	fi
+	sleep 2
+done
+exit 1`, serviceHost, radiusE2ESecret)
+
+	overrides := fmt.Sprintf(`{
+		"spec": {
+			"containers": [{
+				"name": "radclient",
+				"image": "freeradius/freeradius-server:3.2.10-alpine",
+				"command": ["/bin/sh", "-c"],
+				"args": [%q],
+				"securityContext": {
+					"allowPrivilegeEscalation": false,
+					"capabilities": { "drop": ["ALL"] },
+					"seccompProfile": { "type": "RuntimeDefault" }
+				}
+			}],
+			"restartPolicy": "Never"
+		}
+	}`, script)
+
+	deleteCmd := exec.Command("kubectl", "delete", "pod", radiusAuthCheckPod, "-n", workloadNS, "--ignore-not-found", "--wait")
+	_, _ = utils.Run(deleteCmd)
+
+	cmd := exec.Command("kubectl", "run", radiusAuthCheckPod,
+		"--restart=Never",
+		"--namespace", workloadNS,
+		"--image=freeradius/freeradius-server:3.2.10-alpine",
+		"--overrides", overrides,
+	)
+	_, err := utils.Run(cmd)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create radius-auth-check pod")
+
+	verify := func(g Gomega) {
+		cmd := exec.Command("kubectl", "get", "pod", radiusAuthCheckPod,
+			"-n", workloadNS, "-o", "jsonpath={.status.phase}")
+		phase, err := utils.Run(cmd)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(phase).To(Equal("Succeeded"), "radclient pod did not succeed")
+
+		cmd = exec.Command("kubectl", "logs", radiusAuthCheckPod, "-n", workloadNS)
+		logs, err := utils.Run(cmd)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(logs).To(ContainSubstring("Access-Accept"), "expected RADIUS Access-Accept")
+	}
+	Eventually(verify, 3*time.Minute, 3*time.Second).Should(Succeed())
+}
+
+func ensureMetricsReaderBinding() error {
+	manifest := fmt.Sprintf(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: %s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: freeradius-operator-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: %s
+  namespace: %s
+`, metricsRoleBindingName, serviceAccountName, namespace)
+	path := filepath.Join(os.TempDir(), metricsRoleBindingName+".yaml")
+	if err := os.WriteFile(path, []byte(manifest), 0o600); err != nil {
+		return err
+	}
+	cmd := exec.Command("kubectl", "apply", "-f", path)
+	_, err := utils.Run(cmd)
+	return err
+}
 
 // serviceAccountToken returns a token for the specified service account in the given namespace.
 // It uses the Kubernetes TokenRequest API to generate a token by directly sending a request

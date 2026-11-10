@@ -1,5 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/jvaldron/freeradius-operator:latest
+DEFAULT_IMG ?= ghcr.io/jvaldron/freeradius-operator:latest
+IMG ?= $(DEFAULT_IMG)
+DEPLOY_KUSTOMIZE_OVERLAY ?= $(LOCALBIN)/kustomize-deploy
 # YEAR defines the year value used for substituting the YEAR placeholder in the boilerplate header.
 YEAR ?= $(shell date +%Y)
 
@@ -20,6 +22,9 @@ CONTAINER_TOOL ?= docker
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+# Recursive make prints "Entering directory ..." to stdout by default; that breaks
+# piping kustomize output into kubectl apply (strict decoding error: unknown field "make[2]").
+MAKEFLAGS += --no-print-directory
 
 .PHONY: all
 all: build
@@ -84,6 +89,7 @@ setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
 			echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
 			$(KIND) create cluster --name $(KIND_CLUSTER) ;; \
 	esac
+	@$(KIND) export kubeconfig --name $(KIND_CLUSTER)
 
 .PHONY: test-e2e
 test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
@@ -146,11 +152,60 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx rm freeradius-operator-builder
 	rm Dockerfile.cross
 
+.PHONY: kustomize-build-default
+kustomize-build-default: kustomize ## Render install manifests; uses ephemeral overlay under bin/ when IMG != DEFAULT_IMG
+	@set -euo pipefail; \
+	if [ "$(IMG)" = "$(DEFAULT_IMG)" ]; then \
+	  "$(KUSTOMIZE)" build config/default; \
+	  exit 0; \
+	fi; \
+	img="$(IMG)"; \
+	default="$(DEFAULT_IMG)"; \
+	if [[ "$$img" == *:* ]]; then \
+	  img_name="$${img%:*}"; img_tag="$${img##*:}"; \
+	else \
+	  img_name="$$img"; img_tag="latest"; \
+	fi; \
+	if [[ "$$default" == *:* ]]; then \
+	  base_name="$${default%:*}"; \
+	else \
+	  base_name="$$default"; \
+	fi; \
+	mkdir -p "$(DEPLOY_KUSTOMIZE_OVERLAY)"; \
+	{ \
+	  printf '%s\n' \
+	    'apiVersion: kustomize.config.k8s.io/v1beta1' \
+	    'kind: Kustomization' \
+	    'resources:' \
+	    '  - ../../config/default' \
+	    'images:' \
+	    "  - name: $$base_name" \
+	    "    newName: $$img_name" \
+	    "    newTag: $$img_tag" \
+	    'patches:' \
+	    '  - patch: |-' \
+	    '      apiVersion: apps/v1' \
+	    '      kind: Deployment' \
+	    '      metadata:' \
+	    '        name: controller-manager' \
+	    '        namespace: system' \
+	    '      spec:' \
+	    '        template:' \
+	    '          spec:' \
+	    '            containers:' \
+	    '            - name: manager' \
+	    '              imagePullPolicy: Never' \
+	    '    target:' \
+	    '      kind: Deployment' \
+	    '      name: controller-manager' \
+	    '      namespace: system'; \
+	} > "$(DEPLOY_KUSTOMIZE_OVERLAY)/kustomization.yaml"; \
+	"$(KUSTOMIZE)" build "$(DEPLOY_KUSTOMIZE_OVERLAY)"
+
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+	$(MAKE) kustomize-build-default IMG=$(IMG) > dist/install.yaml
 
 ##@ Deployment
 
@@ -170,8 +225,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" apply -f -
+	@$(MAKE) kustomize-build-default IMG=$(IMG) | "$(KUBECTL)" apply -f -
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
