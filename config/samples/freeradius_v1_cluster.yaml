@@ -9,5 +9,3 @@ spec:
   certificate:
     tlsSecretRef:
       name: freeradius-primary-tls
-    dhSecretRef:
-      name: freeradius-primary-dh

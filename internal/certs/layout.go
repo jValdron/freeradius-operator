@@ -44,11 +44,7 @@ func LayoutFromCluster(spec freeradiusv1.CertificateSpec) (Layout, error) {
 		if spec.DHSecretRef != nil {
 			layout.DHSecret = *spec.DHSecretRef
 		}
-		if layout.DHSecret.Name == "" && spec.Certificates != nil && len(spec.Certificates.DH) > 0 {
-			// allow inline dh with tls secret ref
-		} else if layout.DHSecret.Name == "" && spec.FromSecretRef == nil && spec.Certificates == nil {
-			return Layout{}, fmt.Errorf("dhSecretRef is required when using tlsSecretRef")
-		}
+		// dhSecretRef is optional; without it OpenSSL uses built-in DH parameters (no dh_file).
 		return layout, nil
 	case spec.FromSecretRef != nil && spec.FromSecretRef.Name != "":
 		return Layout{Mode: ModeLegacySecret}, nil

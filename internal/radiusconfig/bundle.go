@@ -29,9 +29,11 @@ type Input struct {
 	DefaultVlan        *int32
 	EAP                *freeradiusv1.EAPSpec
 	PrivateKeyPassword string
-	Users              []UserEntry
-	Devices            []DeviceEntry
-	Clients            []ClientEntry
+	// MountDHFile sets tls-config dh_file when custom DH params are mounted.
+	MountDHFile bool
+	Users       []UserEntry
+	Devices     []DeviceEntry
+	Clients     []ClientEntry
 }
 
 // Bundle holds ConfigMap and mods key/value pairs.
@@ -50,7 +52,7 @@ func BuildBundle(in Input) Bundle {
 			"radiusd.conf": buildRadiusd(in.ClusterName),
 		},
 		Mods: map[string]string{
-			"eap":    buildEAP(eap, in.PrivateKeyPassword),
+			"eap":    buildEAP(eap, in.PrivateKeyPassword, in.MountDHFile),
 			"mschap": buildMSCHAP(),
 		},
 	}

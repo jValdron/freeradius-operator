@@ -7,7 +7,7 @@ import (
 	freeradiusv1 "github.com/jValdron/freeradius-operator/api/v1"
 )
 
-func buildEAP(cfg freeradiusv1.EAPSpec, privateKeyPassword string) string {
+func buildEAP(cfg freeradiusv1.EAPSpec, privateKeyPassword string, mountDHFile bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "eap {\n")
 	fmt.Fprintf(&b, "\tdefault_eap_type = %s\n\n", cfg.DefaultEapType)
@@ -19,7 +19,9 @@ func buildEAP(cfg freeradiusv1.EAPSpec, privateKeyPassword string) string {
 	fmt.Fprintf(&b, "\t\tprivate_key_file = ${certdir}/server.key\n")
 	fmt.Fprintf(&b, "\t\tcertificate_file = ${certdir}/server.pem\n")
 	fmt.Fprintf(&b, "\t\tca_file = ${cadir}/ca.pem\n")
-	fmt.Fprintf(&b, "\t\tdh_file = ${certdir}/dh\n")
+	if mountDHFile {
+		fmt.Fprintf(&b, "\t\tdh_file = ${certdir}/dh\n")
+	}
 	fmt.Fprintf(&b, "\t\tcipher_list = %q\n", cfg.CipherList)
 	fmt.Fprintf(&b, "\t\ttls_min_version = %q\n", cfg.TLSMinVersion)
 	fmt.Fprintf(&b, "\t\ttls_max_version = %q\n", cfg.TLSMaxVersion)

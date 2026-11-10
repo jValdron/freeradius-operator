@@ -92,6 +92,7 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 		DefaultVlan:        cluster.Spec.DefaultVlan,
 		EAP:                cluster.Spec.EAP,
 		PrivateKeyPassword: password,
+		MountDHFile:        certs.MountDHParams(cluster.Spec.Certificate, layout, mat),
 		Users:              agg.Users,
 		Devices:            agg.Devices,
 		Clients:            agg.Clients,

@@ -6,7 +6,7 @@ import (
 	"github.com/jValdron/freeradius-operator/internal/certs"
 )
 
-func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts bool) []corev1.Volume {
+func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts, mountDH bool) []corev1.Volume {
 	vols := []corev1.Volume{
 		{
 			Name: "raddb-config",
@@ -70,7 +70,7 @@ func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts boo
 	return vols
 }
 
-func buildContainer(image string, debug bool, clusterName string, layout certs.Layout, hasGeneratedCerts bool) corev1.Container {
+func buildContainer(image string, debug bool, clusterName string, layout certs.Layout, hasGeneratedCerts, mountDH bool) corev1.Container {
 	args := []string{}
 	if debug {
 		args = append(args, "-X")
@@ -86,7 +86,7 @@ func buildContainer(image string, debug bool, clusterName string, layout certs.L
 		},
 		VolumeMounts: configVolumeMounts(),
 	}
-	c.VolumeMounts = append(c.VolumeMounts, certVolumeMounts(layout, clusterName, hasGeneratedCerts)...)
+	c.VolumeMounts = append(c.VolumeMounts, certVolumeMounts(layout, clusterName, hasGeneratedCerts, mountDH)...)
 	return c
 }
 
@@ -100,7 +100,7 @@ func configVolumeMounts() []corev1.VolumeMount {
 	}
 }
 
-func certVolumeMounts(layout certs.Layout, clusterName string, hasGeneratedCerts bool) []corev1.VolumeMount {
+func certVolumeMounts(layout certs.Layout, clusterName string, hasGeneratedCerts, mountDH bool) []corev1.VolumeMount {
 	switch layout.Mode {
 	case certs.ModeCertManager:
 		mounts := []corev1.VolumeMount{
@@ -112,22 +112,27 @@ func certVolumeMounts(layout certs.Layout, clusterName string, hasGeneratedCerts
 		} else {
 			mounts = append(mounts, corev1.VolumeMount{Name: "raddb-tls", MountPath: "/etc/raddb/certs/ca.pem", SubPath: "tls.crt"})
 		}
-		if layout.DHSecret.Name != "" {
-			mounts = append(mounts, corev1.VolumeMount{Name: "raddb-dh", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
-		} else if hasGeneratedCerts {
-			mounts = append(mounts, corev1.VolumeMount{Name: "raddb-certs", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
-			if caOnly := caGeneratedMounts(); len(caOnly) > 0 {
-				mounts = append(mounts, caOnly...)
+		if mountDH {
+			if layout.DHSecret.Name != "" {
+				mounts = append(mounts, corev1.VolumeMount{Name: "raddb-dh", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
+			} else if hasGeneratedCerts {
+				mounts = append(mounts, corev1.VolumeMount{Name: "raddb-certs", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
 			}
+		}
+		if hasGeneratedCerts {
+			mounts = append(mounts, caGeneratedMounts()...)
 		}
 		return mounts
 	default:
-		return []corev1.VolumeMount{
+		mounts := []corev1.VolumeMount{
 			{Name: "raddb-certs", MountPath: "/etc/raddb/certs/ca.pem", SubPath: "ca.pem"},
-			{Name: "raddb-certs", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"},
 			{Name: "raddb-certs", MountPath: "/etc/raddb/certs/server.key", SubPath: "server.key"},
 			{Name: "raddb-certs", MountPath: "/etc/raddb/certs/server.pem", SubPath: "server.pem"},
 		}
+		if mountDH {
+			mounts = append(mounts, corev1.VolumeMount{Name: "raddb-certs", MountPath: "/etc/raddb/certs/dh", SubPath: "dh"})
+		}
+		return mounts
 	}
 }
 

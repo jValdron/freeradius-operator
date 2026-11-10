@@ -92,6 +92,9 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 		image = defaultFreeradiusImage
 	}
 
+	mountDH := certs.MountDHParams(cluster.Spec.Certificate, in.CertLayout, in.CertMaterial)
+	hasCertSecret := certSecret != nil
+
 	replicas := cluster.Spec.Replicas
 	if replicas < 0 {
 		replicas = 1
@@ -125,8 +128,8 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Volumes:            buildVolumes(name, in.CertLayout, certSecret != nil),
-					Containers:         []corev1.Container{buildContainer(image, cluster.Spec.Debug, name, in.CertLayout, certSecret != nil)},
+					Volumes:            buildVolumes(name, in.CertLayout, hasCertSecret, mountDH),
+					Containers:         []corev1.Container{buildContainer(image, cluster.Spec.Debug, name, in.CertLayout, hasCertSecret, mountDH)},
 					ServiceAccountName: "default",
 				},
 			},

@@ -40,7 +40,8 @@ type CertificateSpec struct {
 	// +optional
 	TLSSecretRef *SecretRef `json:"tlsSecretRef,omitempty"`
 
-	// DH parameters when using TLSSecretRef (cert-manager does not supply dh).
+	// Optional custom DH parameters (e.g. openssl dhparam). When omitted with
+	// tlsSecretRef, FreeRADIUS/OpenSSL use default built-in DH parameters.
 	// +optional
 	DHSecretRef *SecretRef `json:"dhSecretRef,omitempty"`
 }

@@ -38,6 +38,19 @@ func TestBuildBundleEAPUsesServerKey(t *testing.T) {
 	if strings.Contains(eap, "with_ntdomain_hack") {
 		t.Fatal("eap should not contain legacy directives")
 	}
+	if strings.Contains(eap, "dh_file") {
+		t.Fatal("expected no dh_file without MountDHFile")
+	}
+}
+
+func TestBuildBundleEAPWithDHFile(t *testing.T) {
+	b := radiusconfig.BuildBundle(radiusconfig.Input{
+		ClusterName: "primary",
+		MountDHFile: true,
+	})
+	if !strings.Contains(b.Mods["eap"], "dh_file = ${certdir}/dh") {
+		t.Fatal("expected dh_file when MountDHFile is true")
+	}
 }
 
 func TestBuildBundleClientsSecretQuoted(t *testing.T) {

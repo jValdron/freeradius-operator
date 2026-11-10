@@ -2,7 +2,7 @@
 
 Go ([Kubebuilder](https://book.kubebuilder.io/)) operator for [FreeRADIUS](https://freeradius.org/) on Kubernetes. It reconciles **Cluster**, **Client**, **User**, and **Device** custom resources into a FreeRADIUS **Deployment**, **Service**, and generated configuration.
 
-Comes as-is, with no support or warranties.
+This project was rewritten from the original Node.js operator into Go with AI assistance. It comes as-is, with no support or warranties.
 
 ## Quick start
 
@@ -47,8 +47,6 @@ spec:
   certificate:
     tlsSecretRef:
       name: freeradius-primary-tls
-    dhSecretRef:
-      name: freeradius-primary-dh
   eap:
     defaultEapType: ttls
     tlsMinVersion: "1.2"
@@ -56,11 +54,11 @@ spec:
 
 ### TLS
 
-**Preferred (cert-manager):** `tlsSecretRef` + `dhSecretRef` (cert-manager does not supply DH). The Deployment mounts `tls.crt` / `tls.key` directly; no copying into a generated TLS Secret.
+**Preferred (cert-manager):** `tlsSecretRef` only. The Deployment mounts `tls.crt` / `tls.key` from cert-manager. DH for EAP-TLS uses **OpenSSL built-in parameters** (no `dh_file` in generated config). Use `dhSecretRef` only when you need custom DH params from `openssl dhparam`.
 
 **Legacy:** inline `certificates` or `fromSecretRef` with keys `ca`, `dh`, `privateKey`, `publicKey`, optional `privateKeyPassword`.
 
-See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer, Certificate, and DH secret example.
+See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer and Certificate example.
 
 ### Workload defaults
 

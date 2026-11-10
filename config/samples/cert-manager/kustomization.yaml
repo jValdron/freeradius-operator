@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - issuer.yaml
   - certificate.yaml
-  # dh-secret.yaml is an example only; create real DH material out-of-band.
+  # dh-secret.yaml is optional (omit dhSecretRef to use OpenSSL default DH).

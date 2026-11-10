@@ -35,7 +35,7 @@ func ResolveMaterial(ctx context.Context, c client.Client, clusterNS string, spe
 		return readLegacySecret(ctx, c, secretNamespace(clusterNS, *ref), ref.Name)
 	case ModeCertManager:
 		var mat *Material
-		if spec.DHSecretRef != nil {
+		if spec.DHSecretRef != nil && spec.DHSecretRef.Name != "" {
 			dh, err := readDHSecret(ctx, c, secretNamespace(clusterNS, *spec.DHSecretRef), spec.DHSecretRef.Name)
 			if err != nil {
 				return nil, err
