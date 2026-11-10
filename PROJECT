@@ -8,4 +8,38 @@ layout:
 - go.kubebuilder.io/v4
 projectName: freeradius-operator
 repo: github.com/jValdron/freeradius-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: valdron.ca
+  group: freeradius
+  kind: Cluster
+  path: github.com/jValdron/freeradius-operator/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: valdron.ca
+  group: freeradius
+  kind: Client
+  path: github.com/jValdron/freeradius-operator/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: valdron.ca
+  group: freeradius
+  kind: User
+  path: github.com/jValdron/freeradius-operator/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: valdron.ca
+  group: freeradius
+  kind: Device
+  path: github.com/jValdron/freeradius-operator/api/v1
+  version: v1
 version: "3"

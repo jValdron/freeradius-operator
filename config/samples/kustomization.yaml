@@ -1,0 +1,7 @@
+## Append samples of your project ##
+resources:
+- freeradius_v1_cluster.yaml
+- freeradius_v1_client.yaml
+- freeradius_v1_user.yaml
+- freeradius_v1_device.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

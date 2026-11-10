@@ -1,0 +1,7 @@
+apiVersion: freeradius.valdron.ca/v1
+kind: User
+metadata:
+  name: john
+spec:
+  fromSecretRef:
+    name: freeradius-users-john

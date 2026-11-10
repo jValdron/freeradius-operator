@@ -1,0 +1,13 @@
+apiVersion: freeradius.valdron.ca/v1
+kind: Cluster
+metadata:
+  name: primary
+spec:
+  replicas: 1
+  service:
+    type: ClusterIP
+  certificate:
+    tlsSecretRef:
+      name: freeradius-primary-tls
+    dhSecretRef:
+      name: freeradius-primary-dh

@@ -1,0 +1,8 @@
+apiVersion: freeradius.valdron.ca/v1
+kind: Client
+metadata:
+  name: ap-lan
+spec:
+  ipAddress: 10.0.0.1
+  fromSecretRef:
+    name: freeradius-ap-lan-secret

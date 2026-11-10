@@ -1,0 +1,8 @@
+apiVersion: freeradius.valdron.ca/v1
+kind: Device
+metadata:
+  name: phone0
+spec:
+  macAddresses:
+    - aa:bb:cc:dd:ee:ff
+  vlan: 1111
