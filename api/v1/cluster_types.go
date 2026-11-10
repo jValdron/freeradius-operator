@@ -15,7 +15,7 @@ type ClusterSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// FreeRADIUS container image.
-	// +kubebuilder:default="freeradius/freeradius-server:3.2.7-alpine"
+	// +kubebuilder:default="freeradius/freeradius-server:3.2.10-alpine"
 	// +optional
 	Image string `json:"image,omitempty"`
 

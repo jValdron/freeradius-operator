@@ -140,7 +140,7 @@ spec:
                     type: string
                 type: object
               image:
-                default: freeradius/freeradius-server:3.2.7-alpine
+                default: freeradius/freeradius-server:3.2.10-alpine
                 description: FreeRADIUS container image.
                 type: string
               isDefaultCluster:

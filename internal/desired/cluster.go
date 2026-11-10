@@ -17,7 +17,7 @@ import (
 	"github.com/jValdron/freeradius-operator/internal/radiusconfig"
 )
 
-const defaultFreeradiusImage = "freeradius/freeradius-server:3.2.7-alpine"
+const defaultFreeradiusImage = "freeradius/freeradius-server:3.2.10-alpine"
 
 const metallbAllowSharedIP = "metallb.universe.tf/allow-shared-ip"
 

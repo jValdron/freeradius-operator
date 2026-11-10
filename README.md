@@ -62,7 +62,7 @@ See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer a
 
 ### Workload defaults
 
-- Image default: `freeradius/freeradius-server:3.2.7-alpine` (override with `spec.image`)
+- Image default: `freeradius/freeradius-server:3.2.10-alpine` (override with `spec.image`)
 - `spec.debug: true` enables `radiusd -X` (off by default)
 - EAP/TLS: modern minimum versions via `spec.eap`
 

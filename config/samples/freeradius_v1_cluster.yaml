@@ -4,6 +4,7 @@ metadata:
   name: primary
 spec:
   replicas: 1
+  image: freeradius/freeradius-server:3.2.10-alpine
   service:
     type: ClusterIP
   certificate:
