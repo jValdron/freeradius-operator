@@ -1,24 +1,40 @@
 # freeradius-operator
-An operator that creates instances of FreeRADIUS, and allows setting up clients and users.
 
-## Notice
-This comes as-is, with no support or no warranties.
+Go ([Kubebuilder](https://book.kubebuilder.io/)) operator for [FreeRADIUS](https://freeradius.org/) on Kubernetes. It reconciles **Cluster**, **Client**, **User**, and **Device** custom resources into a FreeRADIUS **Deployment**, **Service**, and generated configuration.
 
-I have very little experience with FreeRADIUS (and RADIUS in general). This was created just to allow me to connect to my APs using WPA enterprise and that's about it.
+Comes as-is, with no support or warranties.
 
-The scope of the project won't be expanded, at least not by myself, seeing as I have a very limited use-case for FreeRADIUS.
+## Quick start
 
-Nevertheless, I've tried to built it as generic as possible, and there is a generous amount of templating available, so that it can be expanded if required.
-
-## Options
-Available options via environment variables (or dotenv):
-* `LOG_LEVEL`: Optional, overrides the log level: ['trace', 'debug', 'info', 'warn', 'error']
-* `DRY_RUN`: Whether or not to enable dry run mode, won't actually create any resources, used for development/debugging.
-
-## Resources
-### Cluster
+```bash
+make install          # CRDs
+make deploy IMG=ghcr.io/jvaldron/freeradius-operator:latest
 ```
----
+
+Apply samples (adjust namespaces and secrets):
+
+```bash
+kubectl apply -k config/samples/cert-manager/   # requires cert-manager
+kubectl apply -f config/samples/freeradius_v1_cluster.yaml
+kubectl apply -f config/samples/freeradius_v1_client.yaml
+kubectl apply -f config/samples/freeradius_v1_user.yaml
+kubectl apply -f config/samples/freeradius_v1_device.yaml
+```
+
+## Configuration
+
+| Environment variable | Flag | Default | Description |
+| -------------------- | ---- | ------- | ----------- |
+| `DRY_RUN` | — | `false` | Skip API writes |
+| `WATCH_NAMESPACE` | — | *(empty)* | If set, limit watches to this namespace (`NAMESPACE` is an alias) |
+
+The manager uses **leader election** by default (`--leader-elect`).
+
+## Cluster
+
+Each `Cluster` owns generated ConfigMaps, a Service, Deployment, and optionally a certs Secret. Config or credential changes update a **config-hash** on the pod template so workloads roll automatically.
+
+```yaml
 apiVersion: freeradius.valdron.ca/v1
 kind: Cluster
 metadata:
@@ -29,82 +45,53 @@ spec:
     type: LoadBalancer
     loadBalancerIP: 10.1.21.33
   certificate:
-    privateKeyPassword: changeme
-    certificates:
-      ca: <ca file>
-      dh: <dh file>
-      privateKey: <server private key>
-      publicKey: <server public key>
+    tlsSecretRef:
+      name: freeradius-primary-tls
+    dhSecretRef:
+      name: freeradius-primary-dh
+  eap:
+    defaultEapType: ttls
+    tlsMinVersion: "1.2"
 ```
 
-Using `fromSecretRef`, generate secret and reference to the secret with `certificate.fromSecretRef.name` instead of a literal passed as `secret`:
-```
-kubectl create secret generic \
-    --from-file=ca=certs/ca.pem \
-    --from-file=dh=certs/dh \
-    --from-file=privateKey=certs/server.key \
-    --from-file=publicKey=certs/server.pem \
-    --from-literal=privateKeyPassword=changeme \
-    freeradius-primary-certs
+### TLS
+
+**Preferred (cert-manager):** `tlsSecretRef` + `dhSecretRef` (cert-manager does not supply DH). The Deployment mounts `tls.crt` / `tls.key` directly; no copying into a generated TLS Secret.
+
+**Legacy:** inline `certificates` or `fromSecretRef` with keys `ca`, `dh`, `privateKey`, `publicKey`, optional `privateKeyPassword`.
+
+See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer, Certificate, and DH secret example.
+
+### Workload defaults
+
+- Image default: `freeradius/freeradius-server:3.2.7-alpine` (override with `spec.image`)
+- `spec.debug: true` enables `radiusd -X` (off by default)
+- EAP/TLS: modern minimum versions via `spec.eap`
+
+## Client, User, Device
+
+- **Client:** RADIUS NAS (`ipAddress` + `secret` or `fromSecretRef`)
+- **User:** PAP users for inner tunnel (`username`/`password` or `fromSecretRef`)
+- **Device:** MAC addresses → VLAN for WPA enterprise (`macAddresses`, `vlan`)
+
+### Multi-cluster
+
+Assign resources with `metadata.labels.clusterName: <cluster.metadata.name>`. Unlabeled resources go to the cluster marked `spec.isDefaultCluster`, or to the sole cluster in a namespace.
+
+## API group
+
+`freeradius.valdron.ca/v1` — compatible with [homelab-operator](https://github.com/jValdron/homelab-operator) Device sync.
+
+## Development
+
+```bash
+make build
+make test
+make run -- --leader-election-namespace=freeradius-operator-system
 ```
 
-#### Multi-clusters
-You can label resources with a special label `clusterName` which will create the resources under the cluster matching the given name.
+Integration controller tests: `go test -tags=integration ./internal/controller/...` (requires envtest assets).
 
-This allows you to have multiple clusters setup. If you only have one cluster, you do not need to specify the `clusterName` label, as it will be treated as the default.
+## License
 
-### Client
-Using plain text secret:
-```
-apiVersion: freeradius.valdron.ca/v1
-kind: Client
-metadata:
-  name: node0
-spec:
-  ipAddress: 10.1.20.1/32
-  secret: changeme
-```
-
-Using `fromSecretRef`, generate secret and reference to the secret with `fromSecretRef.name` instead of a literal passed as `secret`:
-```
-kubectl create secret generic \
-    --from-literal=secret=changeme \
-    freeradius-primary-clients
-```
-
-### Device
-```
-apiVersion: freeradius.valdron.ca/v1
-kind: Device
-metadata:
-  name: phone0
-spec:
-  macAddresses:
-    - aa:bb:cc:dd:ee:ff
-  vlan: 1111
-```
-
-### User
-Using plain text secret:
-```---
-apiVersion: freeradius.valdron.ca/v1
-kind: User
-metadata:
-  name: john
-spec:
-  username: john
-  password: supersecret
-```
-
-Using `fromSecretRef`, generate secret and reference to the secret with `fromSecretRef.name` instead of a literal passed as `secret`:
-```
-kubectl create secret generic \
-    --from-literal=username=john \
-    --from-literal=password=supersecret \
-    freeradius-primary-users-john
-```
-
-## TODO
-* Add `ownerRef` reconciliation when owned resources are modified
-* Add LDAP support
-* Add leader election
+Apache 2.0 — see [LICENSE](LICENSE).
