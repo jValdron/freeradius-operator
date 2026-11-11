@@ -346,8 +346,14 @@ var _ = Describe("Manager", Ordered, func() {
 			const clusterName = "ldap"
 
 			By("deploying OpenLDAP and LDAP-enabled Cluster")
-			delJob := exec.Command("kubectl", "delete", "job", "openldap-seed", "-n", workloadNS, "--ignore-not-found")
-			_, _ = utils.Run(delJob)
+			// Replace prior revisions that mounted bootstrap LDIF into slapd (osixia exits with LDAP 68).
+			for _, args := range [][]string{
+				{"delete", "job", "openldap-seed", "-n", workloadNS, "--ignore-not-found", "--wait"},
+				{"delete", "deployment", "openldap", "-n", workloadNS, "--ignore-not-found", "--wait"},
+			} {
+				del := exec.Command("kubectl", append([]string{}, args...)...)
+				_, _ = utils.Run(del)
+			}
 
 			cmd := exec.Command("kubectl", "apply", "-k", "test/e2e/fixtures/ldap")
 			_, err := utils.Run(cmd)
