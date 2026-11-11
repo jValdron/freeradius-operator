@@ -74,7 +74,7 @@ Set `spec.ldap` to generate `mods-enabled/ldap` and patch `sites-enabled/inner-t
 | `ntPasswordAttribute` | LDAP attribute for `mschap` (default `ntPassword`) |
 | `accessGroupDN` | Wraps user filter with `(memberOf=…)` |
 
-See [config/samples/freeradius_ldap_secret.yaml](config/samples/freeradius_ldap_secret.yaml) and [config/samples/freeradius_v1_cluster_authentik.yaml](config/samples/freeradius_v1_cluster_authentik.yaml) for an Authentik LDAP outpost example.
+See [config/samples/freeradius_ldap_secret.yaml](config/samples/freeradius_ldap_secret.yaml), [config/samples/freeradius_v1_cluster_authentik.yaml](config/samples/freeradius_v1_cluster_authentik.yaml), and [docs/authentik.md](docs/authentik.md) (one-pager) for Authentik LDAP outpost setup.
 
 ### Workload defaults
 

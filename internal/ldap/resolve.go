@@ -73,10 +73,7 @@ func Resolve(ctx context.Context, c client.Client, clusterNS string, spec *freer
 		}
 	}
 
-	mountCA := false
-	if spec.TLS != nil && spec.TLS.CASecretRef != nil && spec.TLS.CASecretRef.Name != "" {
-		mountCA = true
-	}
+	mountCA := spec.TLS != nil && spec.TLS.CASecretRef != nil && spec.TLS.CASecretRef.Name != ""
 
 	return &radiusconfig.LDAPConfig{
 		ServerLine:          serverLine,
