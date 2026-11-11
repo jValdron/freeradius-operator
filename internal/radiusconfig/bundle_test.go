@@ -68,6 +68,15 @@ func TestBuildBundleClientsSecretQuoted(t *testing.T) {
 	}
 }
 
+func TestBuildBundleClientsLocalhostWhenLDAP(t *testing.T) {
+	cfg := &radiusconfig.LDAPConfig{ServerLine: "ldap", BaseDN: "dc=example,dc=org", AuthMode: "bindAsUser"}
+	b := radiusconfig.BuildBundle(radiusconfig.Input{ClusterName: "x", LDAP: cfg})
+	clients := b.Config["clients.conf"]
+	if !strings.Contains(clients, "client localhost") || !strings.Contains(clients, "127.0.0.1") {
+		t.Fatalf("expected localhost client for LDAP inner-tunnel, got:\n%s", clients)
+	}
+}
+
 func TestBuildBundleRadiusdName(t *testing.T) {
 	b := radiusconfig.BuildBundle(radiusconfig.Input{ClusterName: "primary"})
 	got := b.Config["radiusd.conf"]

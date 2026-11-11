@@ -48,7 +48,7 @@ func BuildBundle(in Input) Bundle {
 	eap := MergeEAP(in.EAP)
 	cfg := map[string]string{
 		"authorize":    buildAuthorize(in.Users, in.Devices, in.DefaultVlan),
-		"clients.conf": buildClients(in.Clients),
+		"clients.conf": buildClients(in.Clients, in.LDAP != nil),
 		"radiusd.conf": buildRadiusd(in.ClusterName),
 	}
 	mods := map[string]string{
