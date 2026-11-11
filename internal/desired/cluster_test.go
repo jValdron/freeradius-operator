@@ -94,8 +94,14 @@ func TestBuildClusterNoDebugByDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	args := out.Deployment.Spec.Template.Spec.Containers[0].Args
-	if len(args) != 1 || args[0] != "-f" {
-		t.Fatalf("expected radiusd foreground args [-f], got %v", args)
+	want := []string{"-f", "-l", "/dev/stdout"}
+	if len(args) != len(want) {
+		t.Fatalf("expected radiusd args %v, got %v", want, args)
+	}
+	for i := range want {
+		if args[i] != want[i] {
+			t.Fatalf("expected radiusd args %v, got %v", want, args)
+		}
 	}
 	if !strings.Contains(out.Deployment.Spec.Template.Spec.Containers[0].Image, "freeradius") {
 		t.Fatalf("unexpected image %s", out.Deployment.Spec.Template.Spec.Containers[0].Image)

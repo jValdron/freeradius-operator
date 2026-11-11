@@ -60,6 +60,7 @@ Apply cert-manager/TLS for EAP as in the other samples, then `Client` CRs for yo
 
 | Symptom | Check |
 |--------|--------|
+| Pod crash loop, exit 1 | `kubectl logs` — startup errors (e.g. LDAP bind) are written via `radiusd -l /dev/stdout`; look for `Instantiation failed for module "ldap"` |
 | User not found | `baseDN`, `userBaseDN`, `userFilter`, service account search permissions |
 | Bind OK in Authentik UI but RADIUS fails | Outpost Service DNS/port from the FreeRADIUS pod (`ldapsearch` or `nc`) |
 | `unknown client 127.0.0.1` on inner-tunnel | Regenerate config with LDAP enabled (localhost client is included) |

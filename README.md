@@ -79,8 +79,8 @@ See [config/samples/freeradius_ldap_secret.yaml](config/samples/freeradius_ldap_
 ### Workload defaults
 
 - Image default: `freeradius/freeradius-server:3.2.10-alpine` (override with `spec.image`)
-- Generated `radiusd.conf` uses `log { destination = stdout }` so `kubectl logs` shows auth output (not file-only logging)
-- `spec.debug: true` enables `radiusd -X` (off by default; very verbose)
+- Generated `radiusd.conf` uses `log { destination = stdout }`; the container also passes `radiusd -l /dev/stdout` so startup failures (e.g. LDAP bind) appear in `kubectl logs`
+- `spec.debug: true` switches to `radiusd -X` for per-packet debug (off by default; very verbose)
 - EAP/TLS: modern minimum versions via `spec.eap`
 
 ## Client, User, Device

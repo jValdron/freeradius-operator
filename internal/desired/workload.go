@@ -87,15 +87,18 @@ func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts boo
 }
 
 func buildContainer(image string, debug bool, layout certs.Layout, hasGeneratedCerts, mountDH bool, ldap ldapVolumeOpts) corev1.Container {
-	args := []string{"-f"}
+	// -l /dev/stdout ensures module load / bind failures are visible in kubectl logs;
+	// radiusd -f alone exits silently on errors while destination=stdout in radiusd.conf.
+	args := []string{"-f", "-l", "/dev/stdout"}
 	if debug {
-		args = append(args, "-X")
+		args = []string{"-f", "-X"}
 	}
 	c := corev1.Container{
-		Name:    "freeradius",
-		Image:   image,
-		Command: []string{"/opt/sbin/radiusd"},
-		Args:    args,
+		Name:                     "freeradius",
+		Image:                    image,
+		Command:                  []string{"/opt/sbin/radiusd"},
+		Args:                     args,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Ports: []corev1.ContainerPort{
 			{ContainerPort: 1812, Protocol: corev1.ProtocolUDP, Name: "auth"},
 			{ContainerPort: 1813, Protocol: corev1.ProtocolUDP, Name: "acct"},
