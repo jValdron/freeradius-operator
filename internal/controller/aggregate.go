@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -81,12 +83,23 @@ func (r *ClusterReconciler) aggregateForCluster(ctx context.Context, cluster *fr
 		if !resourceBelongsToCluster(d.Labels, cluster.Name, isDefault) {
 			continue
 		}
+		macs := append([]string(nil), d.Spec.MACAddresses...)
+		slices.Sort(macs)
 		out.Devices = append(out.Devices, radiusconfig.DeviceEntry{
 			Name:         d.Name,
-			MACAddresses: d.Spec.MACAddresses,
+			MACAddresses: macs,
 			VLAN:         d.Spec.VLAN,
 		})
 	}
+	slices.SortFunc(out.Clients, func(a, b radiusconfig.ClientEntry) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+	slices.SortFunc(out.Users, func(a, b radiusconfig.UserEntry) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+	slices.SortFunc(out.Devices, func(a, b radiusconfig.DeviceEntry) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	return out, nil
 }
 

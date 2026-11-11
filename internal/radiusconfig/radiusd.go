@@ -12,7 +12,11 @@ import (
 //go:embed embed/radiusd.conf.default
 var radiusdConfDefault []byte
 
-const defaultRadiusdNameLine = "name = radiusd"
+const (
+	defaultRadiusdNameLine    = "name = radiusd"
+	defaultLogDestinationLine = "destination = files"
+	k8sLogDestinationLine     = "destination = stdout"
+)
 
 func buildRadiusd(clusterName string) string {
 	if clusterName == "" {
@@ -20,8 +24,7 @@ func buildRadiusd(clusterName string) string {
 	}
 	conf := string(radiusdConfDefault)
 	nameLine := fmt.Sprintf("name = %s", clusterName)
-	if strings.Contains(conf, defaultRadiusdNameLine) {
-		return strings.Replace(conf, defaultRadiusdNameLine, nameLine, 1)
-	}
-	return nameLine + "\n" + conf
+	conf = strings.Replace(conf, defaultRadiusdNameLine, nameLine, 1)
+	conf = strings.Replace(conf, defaultLogDestinationLine, k8sLogDestinationLine, 1)
+	return conf
 }

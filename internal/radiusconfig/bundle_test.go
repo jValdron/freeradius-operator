@@ -80,4 +80,10 @@ func TestBuildBundleRadiusdName(t *testing.T) {
 	if strings.Contains(got, "name = radiusd\n") && !strings.Contains(got, "name = primary") {
 		t.Fatal("expected default name replaced with cluster name")
 	}
+	if strings.Contains(got, "destination = files") {
+		t.Fatal("expected log destination = stdout for Kubernetes")
+	}
+	if !strings.Contains(got, "destination = stdout") {
+		t.Fatal("expected log destination = stdout for Kubernetes")
+	}
 }

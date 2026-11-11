@@ -118,9 +118,13 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
+# Local manager defaults (current kubeconfig context). Extra flags: make run RUN_ARGS="--leader-elect=false"
+RUN_ARGS ?=
+RUN_FLAGS ?= --leader-election-namespace=freeradius-operator --metrics-secure=false
+
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/main.go $(RUN_FLAGS) $(RUN_ARGS)
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.

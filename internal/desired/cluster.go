@@ -185,20 +185,28 @@ func hashConfig(bundle radiusconfig.Bundle, layout certs.Layout, mat *certs.Mate
 		_, _ = h.Write([]byte(k))
 		_, _ = h.Write([]byte(bundle.Config[k]))
 	}
-	for k, v := range bundle.Mods {
+	for _, k := range slices.Sorted(maps.Keys(bundle.Mods)) {
 		_, _ = h.Write([]byte(k))
-		_, _ = h.Write([]byte(v))
+		_, _ = h.Write([]byte(bundle.Mods[k]))
 	}
-	if mat != nil {
+	_, _ = fmt.Fprintf(h, "cert=%d", layout.Mode)
+	_, _ = fmt.Fprintf(h, "tlsHasCA=%v", layout.TLSHasCA)
+	if layout.TLSSecret.Name != "" {
+		_, _ = h.Write([]byte(layout.TLSSecret.Name))
+		_, _ = h.Write([]byte(layout.TLSSecret.Namespace))
+	}
+	if layout.DHSecret.Name != "" {
+		_, _ = h.Write([]byte(layout.DHSecret.Name))
+		_, _ = h.Write([]byte(layout.DHSecret.Namespace))
+	}
+	if mat != nil && layout.Mode != certs.ModeCertManager {
 		_, _ = h.Write(mat.CAPEM)
 		_, _ = h.Write(mat.DH)
 		_, _ = h.Write(mat.ServerKey)
 		_, _ = h.Write(mat.ServerPEM)
-	}
-	_, _ = fmt.Fprintf(h, "cert=%d", layout.Mode)
-	if layout.TLSSecret.Name != "" {
-		_, _ = h.Write([]byte(layout.TLSSecret.Name))
-		_, _ = h.Write([]byte(layout.TLSSecret.Namespace))
+		_, _ = h.Write([]byte(mat.KeyPassword))
+	} else if mat != nil && len(mat.DH) > 0 {
+		_, _ = h.Write(mat.DH)
 	}
 	_, _ = fmt.Fprintf(h, "image=%s", spec.Image)
 	_, _ = fmt.Fprintf(h, "debug=%v", spec.Debug)

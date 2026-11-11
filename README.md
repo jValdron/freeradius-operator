@@ -63,7 +63,8 @@ See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer a
 ### Workload defaults
 
 - Image default: `freeradius/freeradius-server:3.2.10-alpine` (override with `spec.image`)
-- `spec.debug: true` enables `radiusd -X` (off by default)
+- Generated `radiusd.conf` uses `log { destination = stdout }` so `kubectl logs` shows auth output (not file-only logging)
+- `spec.debug: true` enables `radiusd -X` (off by default; very verbose)
 - EAP/TLS: modern minimum versions via `spec.eap`
 
 ## Client, User, Device
@@ -86,10 +87,14 @@ Assign resources with `metadata.labels.clusterName: <cluster.metadata.name>`. Un
 
 ## Development
 
+Uses your current **kubeconfig context** (`make install` for CRDs first). `make run` defaults to `--leader-election-namespace=freeradius-operator` and `--metrics-secure=false`. Scale down or pause the in-cluster manager before running locally so two reconcilers do not fight.
+
 ```bash
 make build
 make test
-make run -- --leader-election-namespace=freeradius-operator-system
+make run
+# optional: make run RUN_ARGS="--leader-elect=false"
+# optional: WATCH_NAMESPACE=freeradius-operator make run
 ```
 
 Integration controller tests: `go test -tags=integration ./internal/controller/...` (requires envtest assets).
