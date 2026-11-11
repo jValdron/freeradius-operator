@@ -80,6 +80,10 @@ Assign resources with `metadata.labels.clusterName: <cluster.metadata.name>`. Un
 
 `freeradius.valdron.ca/v1` — compatible with [homelab-operator](https://github.com/jValdron/homelab-operator) Device sync.
 
+## Roadmap
+
+- [ ] **LDAP** — optional cluster-scoped LDAP bind and generated `ldap` module config (today: inner-tunnel auth uses `User` CRs / secrets only).
+
 ## Development
 
 ```bash
