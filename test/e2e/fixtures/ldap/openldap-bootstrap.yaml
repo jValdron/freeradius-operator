@@ -3,17 +3,16 @@ kind: ConfigMap
 metadata:
   name: openldap-bootstrap
 data:
-  10-e2e-user.ldif: |
+  e2e.ldif: |
     dn: ou=users,dc=example,dc=org
     objectClass: organizationalUnit
     ou: users
 
     dn: uid=e2eldap,ou=users,dc=example,dc=org
     objectClass: inetOrgPerson
-    objectClass: posixAccount
+    objectClass: organizationalPerson
+    objectClass: person
     uid: e2eldap
     cn: e2eldap
     sn: User
     userPassword: e2eldappass
-    uidNumber: 20001
-    gidNumber: 20001

@@ -346,6 +346,9 @@ var _ = Describe("Manager", Ordered, func() {
 			const clusterName = "ldap"
 
 			By("deploying OpenLDAP and LDAP-enabled Cluster")
+			delJob := exec.Command("kubectl", "delete", "job", "openldap-seed", "-n", workloadNS, "--ignore-not-found")
+			_, _ = utils.Run(delJob)
+
 			cmd := exec.Command("kubectl", "apply", "-k", "test/e2e/fixtures/ldap")
 			_, err := utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Failed to apply LDAP fixtures")
@@ -357,6 +360,15 @@ var _ = Describe("Manager", Ordered, func() {
 				g.Expect(err).NotTo(HaveOccurred())
 			}
 			Eventually(waitOpenLDAP, 5*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("waiting for OpenLDAP seed job")
+			waitSeedJob := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=complete",
+					"job", "openldap-seed", "-n", workloadNS, "--timeout=30s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitSeedJob, 3*time.Minute, 5*time.Second).Should(Succeed())
 
 			waitCertReady := func(g Gomega) {
 				cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
