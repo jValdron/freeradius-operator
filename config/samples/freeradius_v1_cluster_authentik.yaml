@@ -1,0 +1,24 @@
+# Example: Authentik LDAP outpost (bind-as-user / EAP-TTLS). Adjust baseDN to your provider.
+apiVersion: freeradius.valdron.ca/v1
+kind: Cluster
+metadata:
+  name: primary
+spec:
+  replicas: 1
+  service:
+    type: ClusterIP
+  certificate:
+    tlsSecretRef:
+      name: freeradius-primary-tls
+  eap:
+    defaultEapType: ttls
+  ldap:
+    servers:
+      - authentik-ldap-outpost.default.svc.cluster.local
+    baseDN: DC=ldap,DC=goauthentik,DC=io
+    userBaseDN: ou=users,DC=ldap,DC=goauthentik,DC=io
+    userFilter: "(&(objectClass=goauthentik.io/ldap/user)(uid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+    authMode: bindAsUser
+    fromSecretRef:
+      name: freeradius-ldap-bind
+    # accessGroupDN: cn=my-group,ou=groups,DC=ldap,DC=goauthentik,DC=io

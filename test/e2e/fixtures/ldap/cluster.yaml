@@ -1,0 +1,19 @@
+apiVersion: freeradius.valdron.ca/v1
+kind: Cluster
+metadata:
+  name: ldap
+spec:
+  replicas: 1
+  image: freeradius/freeradius-server:3.2.10-alpine
+  service:
+    type: ClusterIP
+  certificate:
+    tlsSecretRef:
+      name: freeradius-ldap-tls
+  ldap:
+    servers:
+      - openldap
+    baseDN: dc=example,dc=org
+    userBaseDN: ou=users,dc=example,dc=org
+    fromSecretRef:
+      name: freeradius-ldap-bind

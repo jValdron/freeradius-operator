@@ -60,6 +60,22 @@ spec:
 
 See [config/samples/cert-manager/](config/samples/cert-manager/) for an Issuer and Certificate example.
 
+### LDAP (optional)
+
+Set `spec.ldap` to generate `mods-enabled/ldap` and patch `sites-enabled/inner-tunnel` for directory-backed authentication alongside `User` CRs (files).
+
+| Field | Description |
+| ----- | ----------- |
+| `servers` | One or more hostnames or `ldap(s)://` URIs (rendered as FreeRADIUS multi-host `server`) |
+| `port` | Optional; only for plain hostnames (not URIs) |
+| `baseDN` / `userBaseDN` / `userFilter` | Directory search configuration |
+| `fromSecretRef` | Keys `password` (required), `identity` (optional if `spec.ldap.identity` set) |
+| `authMode` | `bindAsUser` (default, PAP / EAP-TTLS) or `mschap` (LDAP `NT-Password` attribute) |
+| `ntPasswordAttribute` | LDAP attribute for `mschap` (default `ntPassword`) |
+| `accessGroupDN` | Wraps user filter with `(memberOf=…)` |
+
+See [config/samples/freeradius_ldap_secret.yaml](config/samples/freeradius_ldap_secret.yaml) and [config/samples/freeradius_v1_cluster_authentik.yaml](config/samples/freeradius_v1_cluster_authentik.yaml) for an Authentik LDAP outpost example.
+
 ### Workload defaults
 
 - Image default: `freeradius/freeradius-server:3.2.10-alpine` (override with `spec.image`)
@@ -81,10 +97,6 @@ Assign resources with `metadata.labels.clusterName: <cluster.metadata.name>`. Un
 
 `freeradius.valdron.ca/v1` — compatible with [homelab-operator](https://github.com/jValdron/homelab-operator) Device sync.
 
-## Roadmap
-
-- [ ] **LDAP** — optional cluster-scoped LDAP bind and generated `ldap` module config (today: inner-tunnel auth uses `User` CRs / secrets only).
-
 ## Development
 
 Uses your current **kubeconfig context** (`make install` for CRDs first). `make run` defaults to `--leader-election-namespace=freeradius-operator` and `--metrics-secure=false`. Scale down or pause the in-cluster manager before running locally so two reconcilers do not fight.
@@ -98,6 +110,8 @@ make run
 ```
 
 Integration controller tests: `go test -tags=integration ./internal/controller/...` (requires envtest assets).
+
+E2E (Kind): `make test-e2e` — includes LDAP against in-cluster OpenLDAP.
 
 ## License
 

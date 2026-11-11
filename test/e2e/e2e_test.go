@@ -332,6 +332,56 @@ var _ = Describe("Manager", Ordered, func() {
 			By("sending a PAP auth request with radclient")
 			runRadiusAuthCheck(workloadNS, serviceHost)
 		})
+
+		It("should authenticate inner-tunnel users against LDAP", func() {
+			const workloadNS = "default"
+			const clusterName = "ldap"
+
+			By("deploying OpenLDAP and LDAP-enabled Cluster")
+			cmd := exec.Command("kubectl", "apply", "-k", "test/e2e/fixtures/ldap")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to apply LDAP fixtures")
+
+			waitOpenLDAP := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=Available",
+					"deployment", "openldap", "-n", workloadNS, "--timeout=15s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitOpenLDAP, 5*time.Minute, 5*time.Second).Should(Succeed())
+
+			waitCertReady := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
+					"certificate", "freeradius-ldap-tls", "-n", workloadNS, "--timeout=10s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitCertReady, 3*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("applying e2e RADIUS client only (no local User CR)")
+			cmd = exec.Command("kubectl", "apply", "-f", "test/e2e/fixtures/radius_auth_client.yaml")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			deploymentName := fmt.Sprintf("freeradius-%s", clusterName)
+
+			By("waiting for LDAP FreeRADIUS Deployment")
+			waitClusterReady := func(g Gomega) {
+				cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
+					"cluster", clusterName, "-n", workloadNS, "--timeout=15s")
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(waitClusterReady, 5*time.Minute, 5*time.Second).Should(Succeed())
+
+			cmd = exec.Command("kubectl", "wait", "--for=condition=Available",
+				"deployment", deploymentName, "-n", workloadNS, "--timeout=5m")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking LDAP user auth on inner-tunnel via radclient in the FreeRADIUS pod")
+			runInnerTunnelLDAPAuth(workloadNS, clusterName, "e2eldap", "e2eldappass")
+		})
 	})
 })
 
@@ -387,6 +437,43 @@ exit 1`, serviceHost, radiusE2ESecret)
 		g.Expect(logs).To(ContainSubstring("Access-Accept"), "expected RADIUS Access-Accept")
 	}
 	Eventually(verify, 3*time.Minute, 3*time.Second).Should(Succeed())
+}
+
+// runInnerTunnelLDAPAuth execs radclient in the FreeRADIUS pod (inner-tunnel listens on 127.0.0.1:18120).
+func runInnerTunnelLDAPAuth(workloadNS, clusterName, username, password string) {
+	podName, err := freeradiusPodName(workloadNS, clusterName)
+	Expect(err).NotTo(HaveOccurred())
+
+	script := fmt.Sprintf(`for i in $(seq 1 30); do
+	if printf 'User-Name = %s, User-Password = %s\n' | /opt/bin/radclient -x 127.0.0.1:18120 auth testing123 2>&1 | tee /dev/stderr | grep -q 'Access-Accept'; then
+		exit 0
+	fi
+	sleep 2
+done
+exit 1`, username, password)
+
+	verify := func(g Gomega) {
+		cmd := exec.Command("kubectl", "exec", "-n", workloadNS, podName, "-c", "freeradius",
+			"--", "/bin/sh", "-c", script)
+		out, err := utils.Run(cmd)
+		g.Expect(err).NotTo(HaveOccurred(), "radclient exec failed: %s", out)
+	}
+	Eventually(verify, 3*time.Minute, 5*time.Second).Should(Succeed())
+}
+
+func freeradiusPodName(ns, clusterName string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "pods", "-n", ns,
+		"-l", fmt.Sprintf("app=freeradius,freeradius.valdron.ca/cluster=%s", clusterName),
+		"-o", "go-template={{ range .items }}{{ if not .metadata.deletionTimestamp }}{{ .metadata.name }}{{ \"\\n\" }}{{ end }}{{ end }}")
+	out, err := utils.Run(cmd)
+	if err != nil {
+		return "", err
+	}
+	names := utils.GetNonEmptyLines(out)
+	if len(names) != 1 {
+		return "", fmt.Errorf("expected 1 freeradius pod, got %d", len(names))
+	}
+	return names[0], nil
 }
 
 func ensureMetricsReaderBinding() error {

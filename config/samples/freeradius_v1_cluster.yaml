@@ -10,3 +10,10 @@ spec:
   certificate:
     tlsSecretRef:
       name: freeradius-primary-tls
+  # Optional LDAP inner-tunnel auth (see README). Requires freeradius-ldap-bind Secret.
+  # ldap:
+  #   servers:
+  #     - ldap.example.com
+  #   baseDN: dc=example,dc=com
+  #   fromSecretRef:
+  #     name: freeradius-ldap-bind
