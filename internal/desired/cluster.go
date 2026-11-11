@@ -29,6 +29,7 @@ type ClusterInput struct {
 	CertLayout certs.Layout
 	// Material populated after resolving legacy/inline/dh for cert-manager+inline dh.
 	CertMaterial *certs.Material
+	LDAP         *radiusconfig.LDAPConfig
 }
 
 // ClusterOutput contains desired child objects for a cluster reconcile.
@@ -121,8 +122,10 @@ func BuildCluster(in ClusterInput) (ClusterOutput, error) {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Volumes:            buildVolumes(name, in.CertLayout, hasCertSecret),
-					Containers:         []corev1.Container{buildContainer(image, cluster.Spec.Debug, in.CertLayout, hasCertSecret, mountDH)},
+					Volumes: buildVolumes(name, in.CertLayout, hasCertSecret, buildLDAPVolumeOpts(in)),
+					Containers: []corev1.Container{
+						buildContainer(image, cluster.Spec.Debug, in.CertLayout, hasCertSecret, mountDH, buildLDAPVolumeOpts(in)),
+					},
 					ServiceAccountName: "default",
 				},
 			},
@@ -211,5 +214,42 @@ func hashConfig(bundle radiusconfig.Bundle, layout certs.Layout, mat *certs.Mate
 	_, _ = fmt.Fprintf(h, "image=%s", spec.Image)
 	_, _ = fmt.Fprintf(h, "debug=%v", spec.Debug)
 	_, _ = fmt.Fprintf(h, "replicas=%d", spec.Replicas)
+	hashLDAPRefs(h, spec.LDAP)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func hashLDAPRefs(h interface {
+	Write([]byte) (int, error)
+}, ldap *freeradiusv1.LDAPSpec) {
+	if ldap == nil {
+		return
+	}
+	servers := append([]string(nil), ldap.Servers...)
+	slices.Sort(servers)
+	for _, s := range servers {
+		_, _ = h.Write([]byte(s))
+	}
+	if ldap.FromSecretRef != nil {
+		_, _ = h.Write([]byte(ldap.FromSecretRef.Name))
+		_, _ = h.Write([]byte(ldap.FromSecretRef.Namespace))
+	}
+	if ldap.TLS != nil && ldap.TLS.CASecretRef != nil {
+		_, _ = h.Write([]byte(ldap.TLS.CASecretRef.Name))
+		_, _ = h.Write([]byte(ldap.TLS.CASecretRef.Namespace))
+	}
+}
+
+func buildLDAPVolumeOpts(in ClusterInput) ldapVolumeOpts {
+	if in.LDAP == nil {
+		return ldapVolumeOpts{}
+	}
+	opts := ldapVolumeOpts{Enabled: true, Namespace: in.Cluster.Namespace}
+	if in.LDAP.MountLdapCA && in.LDAP.CASecret.Name != "" {
+		opts.CASecretName = in.LDAP.CASecret.Name
+		opts.CASecretNS = in.LDAP.CASecret.Namespace
+		if opts.CASecretNS == "" {
+			opts.CASecretNS = in.Cluster.Namespace
+		}
+	}
+	return opts
 }

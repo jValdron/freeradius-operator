@@ -4,6 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/jValdron/freeradius-operator/internal/certs"
+	"github.com/jValdron/freeradius-operator/internal/radiusconfig"
 )
 
 const (
@@ -12,12 +13,20 @@ const (
 	volRaddbTLS    = "raddb-tls"
 	volRaddbDH     = "raddb-dh"
 	volRaddbCerts  = "raddb-certs"
+	volRaddbLDAPCA = "raddb-ldap-ca"
 
 	mountRaddbCA = "/etc/raddb/certs/ca.pem"
 	mountRaddbDH = "/etc/raddb/certs/dh"
 )
 
-func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts bool) []corev1.Volume {
+type ldapVolumeOpts struct {
+	Enabled      bool
+	Namespace    string
+	CASecretName string
+	CASecretNS   string
+}
+
+func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts bool, ldap ldapVolumeOpts) []corev1.Volume {
 	vols := []corev1.Volume{
 		{
 			Name: volRaddbConfig,
@@ -66,10 +75,18 @@ func buildVolumes(clusterName string, layout certs.Layout, hasGeneratedCerts boo
 			})
 		}
 	}
+	if ldap.Enabled && ldap.CASecretName != "" {
+		vols = append(vols, corev1.Volume{
+			Name: volRaddbLDAPCA,
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: ldap.CASecretName,
+			},
+		})
+	}
 	return vols
 }
 
-func buildContainer(image string, debug bool, layout certs.Layout, hasGeneratedCerts, mountDH bool) corev1.Container {
+func buildContainer(image string, debug bool, layout certs.Layout, hasGeneratedCerts, mountDH bool, ldap ldapVolumeOpts) corev1.Container {
 	args := []string{"-f"}
 	if debug {
 		args = append(args, "-X")
@@ -83,20 +100,35 @@ func buildContainer(image string, debug bool, layout certs.Layout, hasGeneratedC
 			{ContainerPort: 1812, Protocol: corev1.ProtocolUDP, Name: "auth"},
 			{ContainerPort: 1813, Protocol: corev1.ProtocolUDP, Name: "acct"},
 		},
-		VolumeMounts: configVolumeMounts(),
+		VolumeMounts: configVolumeMounts(ldap.Enabled),
 	}
 	c.VolumeMounts = append(c.VolumeMounts, certVolumeMounts(layout, hasGeneratedCerts, mountDH)...)
+	if ldap.Enabled && ldap.CASecretName != "" {
+		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+			Name:      volRaddbLDAPCA,
+			MountPath: radiusconfig.LDAPCAFile,
+			SubPath:   "ca.crt",
+			ReadOnly:  true,
+		})
+	}
 	return c
 }
 
-func configVolumeMounts() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
+func configVolumeMounts(ldapEnabled bool) []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
 		{Name: volRaddbConfig, MountPath: "/etc/raddb/mods-config/files/authorize", SubPath: "authorize"},
 		{Name: volRaddbConfig, MountPath: "/etc/raddb/clients.conf", SubPath: "clients.conf"},
 		{Name: volRaddbConfig, MountPath: "/etc/raddb/radiusd.conf", SubPath: "radiusd.conf"},
 		{Name: volRaddbMods, MountPath: "/etc/raddb/mods-enabled/eap", SubPath: "eap"},
 		{Name: volRaddbMods, MountPath: "/etc/raddb/mods-enabled/mschap", SubPath: "mschap"},
 	}
+	if ldapEnabled {
+		mounts = append(mounts,
+			corev1.VolumeMount{Name: volRaddbMods, MountPath: "/etc/raddb/mods-enabled/ldap", SubPath: "ldap"},
+			corev1.VolumeMount{Name: volRaddbConfig, MountPath: "/etc/raddb/sites-enabled/inner-tunnel", SubPath: "inner-tunnel"},
+		)
+	}
+	return mounts
 }
 
 func certVolumeMounts(layout certs.Layout, hasGeneratedCerts, mountDH bool) []corev1.VolumeMount {

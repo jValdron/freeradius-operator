@@ -18,6 +18,7 @@ import (
 	"github.com/jValdron/freeradius-operator/internal/config"
 	"github.com/jValdron/freeradius-operator/internal/desired"
 	"github.com/jValdron/freeradius-operator/internal/ensure"
+	ldappkg "github.com/jValdron/freeradius-operator/internal/ldap"
 	"github.com/jValdron/freeradius-operator/internal/radiusconfig"
 )
 
@@ -85,6 +86,17 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	setCondition(&cluster, freeradiusv1.ConditionCertificateConfigured, metav1.ConditionTrue, "Resolved", "certificate material resolved")
 
+	var ldapCfg *radiusconfig.LDAPConfig
+	if cluster.Spec.LDAP != nil {
+		resolved, err := ldappkg.Resolve(ctx, r.Client, cluster.Namespace, cluster.Spec.LDAP)
+		if err != nil {
+			setCondition(&cluster, freeradiusv1.ConditionReady, metav1.ConditionFalse, "LDAPResolveFailed", err.Error())
+			_ = r.patchStatus(ctx, &cluster)
+			return ctrl.Result{}, err
+		}
+		ldapCfg = resolved
+	}
+
 	password := cluster.Spec.Certificate.PrivateKeyPassword
 	if mat != nil && mat.KeyPassword != "" {
 		password = mat.KeyPassword
@@ -96,6 +108,7 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 		EAP:                cluster.Spec.EAP,
 		PrivateKeyPassword: password,
 		MountDHFile:        certs.MountDHParams(cluster.Spec.Certificate, layout, mat),
+		LDAP:               ldapCfg,
 		Users:              agg.Users,
 		Devices:            agg.Devices,
 		Clients:            agg.Clients,
@@ -106,6 +119,7 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 		Bundle:       bundle,
 		CertLayout:   layout,
 		CertMaterial: mat,
+		LDAP:         ldapCfg,
 	})
 	if err != nil {
 		setCondition(&cluster, freeradiusv1.ConditionReady, metav1.ConditionFalse, "BuildFailed", err.Error())
@@ -247,6 +261,12 @@ func (r *ClusterReconciler) mapSecretToClusters(ctx context.Context, obj client.
 func clusterReferencesSecret(c *freeradiusv1.Cluster, ns, name string) bool {
 	spec := c.Spec.Certificate
 	refs := []*freeradiusv1.SecretRef{spec.FromSecretRef, spec.TLSSecretRef, spec.DHSecretRef}
+	if c.Spec.LDAP != nil {
+		refs = append(refs, c.Spec.LDAP.FromSecretRef)
+		if c.Spec.LDAP.TLS != nil {
+			refs = append(refs, c.Spec.LDAP.TLS.CASecretRef)
+		}
+	}
 	for _, ref := range refs {
 		if ref == nil || ref.Name != name {
 			continue

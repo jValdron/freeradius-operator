@@ -31,6 +31,7 @@ type Input struct {
 	PrivateKeyPassword string
 	// MountDHFile sets tls-config dh_file when custom DH params are mounted.
 	MountDHFile bool
+	LDAP        *LDAPConfig
 	Users       []UserEntry
 	Devices     []DeviceEntry
 	Clients     []ClientEntry
@@ -45,15 +46,19 @@ type Bundle struct {
 // BuildBundle renders authorize, clients.conf, radiusd.conf, and enabled mods.
 func BuildBundle(in Input) Bundle {
 	eap := MergeEAP(in.EAP)
-	return Bundle{
-		Config: map[string]string{
-			"authorize":    buildAuthorize(in.Users, in.Devices, in.DefaultVlan),
-			"clients.conf": buildClients(in.Clients),
-			"radiusd.conf": buildRadiusd(in.ClusterName),
-		},
-		Mods: map[string]string{
-			"eap":    buildEAP(eap, in.PrivateKeyPassword, in.MountDHFile),
-			"mschap": buildMSCHAP(),
-		},
+	cfg := map[string]string{
+		"authorize":    buildAuthorize(in.Users, in.Devices, in.DefaultVlan),
+		"clients.conf": buildClients(in.Clients),
+		"radiusd.conf": buildRadiusd(in.ClusterName),
 	}
+	mods := map[string]string{
+		"eap":    buildEAP(eap, in.PrivateKeyPassword, in.MountDHFile),
+		"mschap": buildMSCHAP(),
+	}
+	if in.LDAP != nil {
+		ldapCfg := *in.LDAP
+		mods["ldap"] = buildLDAP(ldapCfg)
+		cfg["inner-tunnel"] = buildInnerTunnel(&ldapCfg)
+	}
+	return Bundle{Config: cfg, Mods: mods}
 }
