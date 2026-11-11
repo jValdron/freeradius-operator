@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-bootstrap
+data:
+  10-e2e-user.ldif: |
+    dn: ou=users,dc=example,dc=org
+    objectClass: organizationalUnit
+    ou: users
+
+    dn: uid=e2eldap,ou=users,dc=example,dc=org
+    objectClass: inetOrgPerson
+    objectClass: posixAccount
+    uid: e2eldap
+    cn: e2eldap
+    sn: User
+    userPassword: e2eldappass
+    uidNumber: 20001
+    gidNumber: 20001

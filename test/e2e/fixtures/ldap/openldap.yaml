@@ -23,23 +23,54 @@ spec:
       labels:
         app: openldap
     spec:
+      initContainers:
+        - name: copy-bootstrap
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - cp -a /bootstrap-src/. /bootstrap-dst/
+          volumeMounts:
+            - name: bootstrap-src
+              mountPath: /bootstrap-src
+            - name: bootstrap-dst
+              mountPath: /bootstrap-dst
       containers:
         - name: openldap
-          image: docker.io/bitnami/openldap:2.6.8
+          image: osixia/openldap:1.5.0
           ports:
             - name: ldap
-              containerPort: 1389
+              containerPort: 389
           env:
-            - name: LDAP_ADMIN_USERNAME
-              value: admin
+            - name: LDAP_ORGANISATION
+              value: Example
+            - name: LDAP_DOMAIN
+              value: example.org
             - name: LDAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: openldap
                   key: adminpassword
-            - name: LDAP_ROOT
-              value: dc=example,dc=org
-            - name: LDAP_USERS
-              value: e2eldap
-            - name: LDAP_PASSWORDS
-              value: e2eldappass
+            - name: LDAP_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openldap
+                  key: adminpassword
+            - name: LDAP_TLS
+              value: "false"
+            - name: LDAP_REMOVE_CONFIG_AFTER_SETUP
+              value: "true"
+          volumeMounts:
+            - name: bootstrap-dst
+              mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+          readinessProbe:
+            tcpSocket:
+              port: ldap
+            initialDelaySeconds: 20
+            periodSeconds: 5
+      volumes:
+        - name: bootstrap-src
+          configMap:
+            name: openldap-bootstrap
+        - name: bootstrap-dst
+          emptyDir: {}
