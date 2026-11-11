@@ -33,6 +33,9 @@ type ClusterSpec struct {
 
 	// +optional
 	EAP *EAPSpec `json:"eap,omitempty"`
+
+	// +optional
+	LDAP *LDAPSpec `json:"ldap,omitempty"`
 }
 
 // ClusterStatus defines the observed state of Cluster.

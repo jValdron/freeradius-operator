@@ -147,6 +147,83 @@ spec:
                 description: When true, unlabeled Client/User/Device resources are
                   assigned to this cluster.
                 type: boolean
+              ldap:
+                description: LDAPSpec configures optional cluster-scoped LDAP for
+                  inner-tunnel authentication.
+                properties:
+                  accessGroupDN:
+                    description: When set, user filter is wrapped with (memberOf=<DN>).
+                    type: string
+                  authMode:
+                    default: bindAsUser
+                    description: LDAPAuthMode selects how FreeRADIUS uses LDAP during
+                      inner-tunnel auth.
+                    enum:
+                    - bindAsUser
+                    - mschap
+                    type: string
+                  baseDN:
+                    minLength: 1
+                    type: string
+                  fromSecretRef:
+                    description: SecretRef points at a Kubernetes Secret.
+                    properties:
+                      name:
+                        minLength: 1
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  identity:
+                    description: Bind DN for LDAP searches (may also be supplied via
+                      fromSecretRef key identity).
+                    type: string
+                  ntPasswordAttribute:
+                    default: ntPassword
+                    description: LDAP attribute mapped to NT-Password (mschap authMode
+                      only).
+                    type: string
+                  port:
+                    description: Port applies to plain-hostname entries only (not
+                      ldap(s):// URIs).
+                    format: int32
+                    type: integer
+                  servers:
+                    description: Hostnames or ldap(s):// URIs. Rendered as FreeRADIUS
+                      server = 'a b c'.
+                    items:
+                      type: string
+                    minItems: 1
+                    type: array
+                  startTLS:
+                    type: boolean
+                  tls:
+                    description: LDAPTLSSpec configures TLS for LDAP connections.
+                    properties:
+                      caSecretRef:
+                        description: PEM CA bundle for validating the LDAP server
+                          certificate.
+                        properties:
+                          name:
+                            minLength: 1
+                            type: string
+                          namespace:
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    type: object
+                  userBaseDN:
+                    type: string
+                  userFilter:
+                    type: string
+                required:
+                - baseDN
+                - fromSecretRef
+                - servers
+                type: object
               replicas:
                 format: int32
                 minimum: 0
